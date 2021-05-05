@@ -15,6 +15,7 @@ This package provides tools for testing Aeson serialization.
 -}
 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Test.Aeson.GenericSpecs
   (
@@ -43,7 +44,7 @@ module Test.Aeson.GenericSpecs
   , Proxy(..)
   ) where
 
-import           Data.Aeson                             (FromJSON, ToJSON)
+import           Data.Aeson                             (FromJSON, ToJSON, eitherDecode)
 import           Data.Proxy
 import           Data.Typeable
 
@@ -52,9 +53,12 @@ import           Test.Aeson.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
 import           Test.Aeson.Internal.GoldenSpecs        (goldenSpecs)
 import           Test.Aeson.Internal.RoundtripSpecs     (roundtripSpecs)
 import           Test.Aeson.Internal.Utils
+import qualified           Test.Aeson.Internal.ADT.Utils as Temp
 import           Test.Hspec
 import           Test.QuickCheck
+import Data.Aeson.Encode.Pretty
 import           Test.QuickCheck.Arbitrary.ADT
+import           Data.ByteString.Lazy (ByteString)
 
 -- | run roundtrip and golden test for a type.
 -- sampleSize is used only when creating the golden file. When it is
@@ -71,7 +75,7 @@ roundtripAndGoldenSpecsWithSettings :: forall a.
   => Settings -> Proxy a -> Spec
 roundtripAndGoldenSpecsWithSettings settings proxy = do
   roundtripSpecs proxy
-  goldenSpecs settings proxy
+  goldenSpecs jsonSerializationSettings settings proxy
 
 -- | run roundtrip and golden tests for all constructors of a type.
 -- sampleSize is used only when creating the golden files. When they are
@@ -80,12 +84,26 @@ roundtripAndGoldenADTSpecs :: forall a.
   (Arbitrary a, ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a)
   => Proxy a -> Spec
 roundtripAndGoldenADTSpecs proxy =
-  roundtripAndGoldenADTSpecsWithSettings defaultSettings proxy
+  roundtripAndGoldenADTSpecsWithSettings Temp.defaultSettings proxy
 
 -- | 'roundtripAndGoldenADTSpecs' with custom settings.
 roundtripAndGoldenADTSpecsWithSettings :: forall a.
   (Arbitrary a, ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a)
-  => Settings -> Proxy a -> Spec
+  => Temp.Settings -> Proxy a -> Spec
 roundtripAndGoldenADTSpecsWithSettings settings proxy = do
   roundtripADTSpecs proxy
   goldenADTSpecs settings proxy
+
+
+encodePrettySortedKeys :: ToJSON a => a -> ByteString
+encodePrettySortedKeys = encodePretty' defConfig { confCompare = compare }
+
+
+jsonSerializationSettings = SerializationSettings {
+  encode = encodePrettySortedKeys,
+  decode = eitherDecode,
+  fileExtension = "json"
+}
+
+instance FromJSON a => FromJSON (RandomSamples a)
+instance ToJSON   a => ToJSON   (RandomSamples a)

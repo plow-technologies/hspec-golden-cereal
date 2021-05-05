@@ -14,7 +14,7 @@ Internal module, use at your own risk.
 module Test.Aeson.Internal.RoundtripSpecs where
 
 
-import           Data.Aeson as Aeson hiding (encode)
+import           Data.Aeson as Aeson
 import           Data.Typeable
 
 import           Test.Aeson.Internal.Utils
@@ -58,5 +58,28 @@ genericAesonRoundtripWithNotePlain _ mNote typeIdentifier = do
   describe ("JSON encoding of " ++ addBrackets (typeIdentifier) ++ note) $
     prop "allows to encode values with aeson and read them back"  
           (checkAesonEncodingEquality' )
+
+-- | Used to eliminate the need for an Eq instance
+newtype JsonShow a = JsonShow a 
+
+instance ToJSON a => Show (JsonShow a) where 
+    show (JsonShow v) = show . Aeson.encode $ v 
+
+instance ToJSON a => ToJSON (JsonShow a) where
+    toJSON (JsonShow a) = toJSON a
+
+instance FromJSON a => FromJSON (JsonShow a) where
+     parseJSON v = JsonShow <$> (parseJSON v)
+
+instance Arbitrary a => Arbitrary (JsonShow a) where
+    arbitrary = JsonShow <$> arbitrary 
+
+-- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
+checkAesonEncodingEquality :: forall a . (ToJSON a, FromJSON a) => JsonShow a -> Bool
+checkAesonEncodingEquality (JsonShow a) =  
+  let byteStrA = Aeson.encode a
+      decodedVal =  (eitherDecode byteStrA) :: Either String a
+      eitherByteStrB = Aeson.encode <$> decodedVal
+  in (Right byteStrA) == eitherByteStrB
 
 

@@ -10,28 +10,33 @@ Stability   : Beta
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DeriveGeneric        #-}
 
-module Test.Aeson.Internal.Utils where
 
-import Control.Exception
+module Test.Aeson.Internal.ADT.Utils where
+
+import           Control.Exception
+
+import           Data.Aeson
+import           Data.Aeson.Encode.Pretty
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Proxy
 import           Data.Typeable
-import           Data.Int (Int32)
 
 import           Prelude
 
 import           Test.Hspec
 import           Test.QuickCheck
+import           Data.Aeson
+import           Data.ByteString.Lazy (ByteString)
+import           Data.Int (Int32)
 
 import           GHC.Generics
+
+import           Test.QuickCheck
 import           Test.QuickCheck.Gen
 import           Test.QuickCheck.Random
-import GHC.Exts (Constraint)
 
 -- | Option to indicate whether to create a separate comparison file or overwrite the golden file.
 -- A separate file allows you to use `diff` to compare.
@@ -63,12 +68,6 @@ data Settings = Settings
   -- ^ Whether to output a warning or fail the test when the random seed produces different values than the values in the golden file.
   }
 
-data SerializationSettings toX fromX = SerializationSettings
-  { encode :: forall a . toX a => RandomSamples a -> ByteString
-  , decode :: forall a . (fromX ByteString, fromX a) => ByteString -> Either String (RandomSamples a)
-  , fileExtension :: String
-  }
-
 -- | A custom directory name or a preselected directory name.
 data GoldenDirectoryOption = CustomDirectoryName String | GoldenDirectory
 
@@ -92,48 +91,38 @@ shouldBeIdentity Proxy func =
   property $ \ (a :: a) -> func a `shouldReturn` a
 
 -- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
-checkEncodingEquality :: forall a fromX toX . (fromX ByteString, fromX a, toX a, toX ByteString) => SerializationSettings fromX toX -> RandomSamples a -> Bool
-checkEncodingEquality settings a =  
-  let byteStrA = encode settings a 
-      decodedVal :: Either String (RandomSamples a) =  decode settings byteStrA
-      eitherByteStrB = encode settings <$> decodedVal  
+checkAesonEncodingEquality :: forall a . (ToJSON a, FromJSON a) => JsonShow a -> Bool
+checkAesonEncodingEquality (JsonShow a) =  
+  let byteStrA = encode a
+      decodedVal =  (eitherDecode byteStrA) :: Either String a
+      eitherByteStrB = encode <$> decodedVal  
   in (Right byteStrA) == eitherByteStrB
 
--- | RandomSamples, using a seed allows you to replicate an arbitrary. By
--- storing the seed and the samples (previously produced arbitraries), we can
--- try to reproduce the same samples by generating the arbitraries with a seed.
-
-data RandomSamples a = RandomSamples {
-  seed    :: Int32
-, samples :: [a]
-} deriving (Eq, Ord, Show, Generic)
-
--- | Apply the seed.
-setSeed :: Int -> Gen a -> Gen a
-setSeed rSeed (MkGen g) = MkGen $ \ _randomSeed size -> g (mkQCGen rSeed) size
-
-
--- | Reads the seed without looking at the samples.
-readSeed :: forall a fromX toX . (fromX ByteString, fromX a, toX a, toX ByteString) => SerializationSettings fromX toX -> ByteString -> IO Int32
-readSeed settings bs = 
-  fmap seed $ decodeIO @a settings bs
-
-{-
-
--- | Read the sample size.
-readSampleSize :: SerializationSettings ctx -> ByteString -> IO Int
-readSampleSize settings = fmap (length . samples) . decodeIO @(RandomSamples ByteString) settings
--}
 -- | run decode in IO, if it returns Left then throw an error.
-decodeIO :: forall a fromX toX . (fromX ByteString, fromX a, toX a, toX ByteString) => SerializationSettings fromX toX -> ByteString -> IO (RandomSamples a)
-decodeIO settings bs = case decode settings bs of
+aesonDecodeIO :: FromJSON a => ByteString -> IO a
+aesonDecodeIO bs = case eitherDecode bs of
   Right a -> return a
-  Left msg -> throwIO $ DecodeError msg
+  Left msg -> throwIO $ AesonDecodeError msg
 
-data DecodeError = DecodeError String
+data AesonDecodeError = AesonDecodeError String
   deriving (Show, Eq)
 
-instance Exception DecodeError
+instance Exception AesonDecodeError
+
+-- | Used to eliminate the need for an Eq instance
+newtype JsonShow a = JsonShow a 
+
+instance ToJSON a => Show (JsonShow a) where 
+    show (JsonShow v) = show . encode $ v 
+
+instance ToJSON a => ToJSON (JsonShow a) where
+    toJSON (JsonShow a) = toJSON a
+
+instance FromJSON a => FromJSON (JsonShow a) where
+     parseJSON v = JsonShow <$> (parseJSON v)
+
+instance Arbitrary a => Arbitrary (JsonShow a) where
+    arbitrary = JsonShow <$> arbitrary 
 
 --------------------------------------------------
 -- Handle creating names
@@ -181,3 +170,29 @@ mkTypeNameInfo (Settings { useModuleNameAsSubDirectory
      case goldenDirectoryOption of
        GoldenDirectory -> "golden"
        CustomDirectoryName d -> d
+
+encodePrettySortedKeys :: ToJSON a => a -> ByteString
+encodePrettySortedKeys = encodePretty' defConfig { confCompare = compare }
+-- | RandomSamples, using a seed allows you to replicate an arbitrary. By
+-- storing the seed and the samples (previously produced arbitraries), we can
+-- try to reproduce the same samples by generating the arbitraries with a seed.
+
+data RandomSamples a = RandomSamples {
+  seed    :: Int32
+, samples :: [a]
+} deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON a => FromJSON (RandomSamples a)
+instance ToJSON   a => ToJSON   (RandomSamples a)
+
+-- | Apply the seed.
+setSeed :: Int -> Gen a -> Gen a
+setSeed rSeed (MkGen g) = MkGen $ \ _randomSeed size -> g (mkQCGen rSeed) size
+
+-- | Reads the seed without looking at the samples.
+readSeed :: ByteString -> IO Int32
+readSeed = fmap seed . aesonDecodeIO @(RandomSamples Value)
+
+-- | Read the sample size.
+readSampleSize :: ByteString -> IO Int
+readSampleSize = fmap (length . samples) . aesonDecodeIO @(RandomSamples Value)

@@ -23,7 +23,7 @@ import           Control.Arrow
 import           Control.Exception
 import           Control.Monad
 
-import           Data.Aeson                (ToJSON, FromJSON)
+import           Data.Aeson                
 import           Data.ByteString.Lazy      (writeFile, readFile)
 import           Data.Int                  (Int32)
 import           Data.Maybe                (isJust)
@@ -36,12 +36,14 @@ import           System.Environment        (lookupEnv)
 import           System.FilePath
 import           System.Random
 
-import           Test.Aeson.Internal.RandomSamples
-import           Test.Aeson.Internal.Utils
+import           Test.Aeson.Internal.ADT.Utils
 import           Test.Hspec
 import           Test.HUnit.Lang (HUnitFailure)
 import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary.ADT
+
+import           Data.ByteString.Lazy (ByteString)
+import Data.Aeson.Encode.Pretty
 
 -- | Tests to ensure that JSON encoding has not unintentionally changed. This
 -- could be caused by the following:
@@ -239,3 +241,4 @@ mkGoldenFileForType sampleSize Proxy goldenPath = do
             rSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor constructor) rSeed
             writeFile goldenFile $ encodePrettySortedKeys rSamples
     ) constructors
+

@@ -23,6 +23,8 @@ import           Test.Aeson.Internal.Utils
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary.ADT
+import           Data.ByteString.Lazy (ByteString)
+import Control.Exception
 
 import Control.Monad
 
@@ -57,3 +59,13 @@ genericAesonRoundtripADTWithNote _ mNote = do
         (Aeson.encode >>> aesonDecodeIO) (capArbitrary cap) `shouldReturn` capArbitrary cap
   where
     note = maybe "" (" " ++) mNote
+
+
+aesonDecodeIO :: FromJSON a => ByteString -> IO a
+aesonDecodeIO bs = case eitherDecode bs of
+  Right a -> return a
+  Left msg -> throwIO $ AesonDecodeError msg
+
+data AesonDecodeError = AesonDecodeError String deriving (Show, Eq)
+ 
+instance Exception AesonDecodeError
