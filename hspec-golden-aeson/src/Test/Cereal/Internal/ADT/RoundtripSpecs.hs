@@ -15,8 +15,7 @@ module Test.Cereal.Internal.ADT.RoundtripSpecs where
 
 import           Control.Arrow
 
-import qualified Data.Aeson as Aeson
-import           Data.Aeson as Aeson hiding (encode)
+import Data.Serialize
 import           Data.Typeable
 
 import           Test.Cereal.Internal.Utils
@@ -25,6 +24,7 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary.ADT
 import           Data.ByteString.Lazy (ByteString)
 import Control.Exception
+import Data.Foldable (traverse_)
 
 import Control.Monad
 
@@ -39,7 +39,7 @@ import Control.Monad
 -- - make sure that the result is the same as the value it started with
 --   using 'Eq'.
 roundtripADTSpecs :: forall a.
-  (Arbitrary a, ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a)
+  (Arbitrary a, ToADTArbitrary a, Eq a, Show a, Serialize a)
   => Proxy a
   -> Spec
 roundtripADTSpecs proxy = genericAesonRoundtripADTWithNote proxy Nothing
@@ -47,7 +47,7 @@ roundtripADTSpecs proxy = genericAesonRoundtripADTWithNote proxy Nothing
 -- | Same as 'roundtripADTSpecs' but has the option of passing a note to the
 -- 'describe' function.
 genericAesonRoundtripADTWithNote :: forall a.
-  (ToADTArbitrary a, Eq a, Show a, Arbitrary a, ToJSON a, FromJSON a)
+  (ToADTArbitrary a, Eq a, Show a, Arbitrary a, Serialize a)
   => Proxy a
   -> Maybe String
   -> Spec
@@ -55,17 +55,9 @@ genericAesonRoundtripADTWithNote _ mNote = do
   adt <- runIO $ generate (toADTArbitrary (Proxy :: Proxy a))
   describe ("JSON encoding of " ++ addBrackets (adtTypeName adt) ++ note) $
     it "allows to encode values with aeson and read them back" $
-      forM_ (adtCAPs adt) $ \cap ->
-        (Aeson.encode >>> aesonDecodeIO) (capArbitrary cap) `shouldReturn` capArbitrary cap
+      traverse_ (serializeRoundtrip . capArbitrary) $ adtCAPs adt
   where
     note = maybe "" (" " ++) mNote
 
-
-aesonDecodeIO :: FromJSON a => ByteString -> IO a
-aesonDecodeIO bs = case eitherDecode bs of
-  Right a -> return a
-  Left msg -> throwIO $ AesonDecodeError msg
-
-data AesonDecodeError = AesonDecodeError String deriving (Show, Eq)
- 
-instance Exception AesonDecodeError
+serializeRoundtrip :: (Eq a, Serialize a, Show a) => a -> Expectation
+serializeRoundtrip a = decodeLazy (encodeLazy a) `shouldBe` Right a

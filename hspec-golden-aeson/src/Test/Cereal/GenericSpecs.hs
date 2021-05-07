@@ -62,7 +62,7 @@ import           Test.Cereal.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
 import           Test.Cereal.Internal.GoldenSpecs        (goldenSpecs)
 import           Test.Cereal.Internal.RoundtripSpecs     (roundtripSpecs)
 import           Test.Cereal.Internal.Utils
-import qualified           Test.Cereal.Internal.ADT.Utils as Temp
+import           Test.Cereal.Internal.ADT.Utils
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary.ADT
@@ -92,20 +92,20 @@ roundtripAndGoldenSpecsWithSettings settings proxy = do
 -- sampleSize is used only when creating the golden files. When they are
 -- compared, the sampleSize is derived from the file.
 roundtripAndGoldenADTSpecs :: forall a.
-  (Arbitrary a, ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a)
+  (Arbitrary a, ToADTArbitrary a, Eq a, Show a, Cereal.Serialize a)
   => Proxy a -> Spec
 roundtripAndGoldenADTSpecs proxy =
-  roundtripAndGoldenADTSpecsWithSettings Temp.defaultSettings proxy
+  roundtripAndGoldenADTSpecsWithSettings defaultSettings proxy
 
 -- | 'roundtripAndGoldenADTSpecs' with custom settings.
 roundtripAndGoldenADTSpecsWithSettings :: forall a.
-  (Arbitrary a, ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a)
-  => Temp.Settings -> Proxy a -> Spec
+  (Arbitrary a, ToADTArbitrary a, Eq a, Show a, Cereal.Serialize a)
+  => Settings -> Proxy a -> Spec
 roundtripAndGoldenADTSpecsWithSettings settings proxy = do
   roundtripADTSpecs proxy
   goldenADTSpecs settings proxy
 
-instance Cereal.Serialize a => Cereal.Serialize (RandomSamples a)
+
 
 data GoldenCereal a = GoldenCereal a deriving (Show)
 

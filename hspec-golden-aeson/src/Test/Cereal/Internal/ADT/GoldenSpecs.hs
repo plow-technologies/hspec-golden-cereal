@@ -19,11 +19,11 @@ Internal module, use at your own risk.
 
 module Test.Cereal.Internal.ADT.GoldenSpecs where
 
+import Test.Cereal.Internal.Utils
 import           Control.Arrow
 import           Control.Exception
 import           Control.Monad
-
-import           Data.Aeson                
+       
 import           Data.ByteString.Lazy      (writeFile, readFile)
 import           Data.Int                  (Int32)
 import           Data.Maybe                (isJust)
@@ -43,7 +43,7 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary.ADT
 
 import           Data.ByteString.Lazy (ByteString)
-import Data.Aeson.Encode.Pretty
+import Data.Serialize
 
 -- | Tests to ensure that JSON encoding has not unintentionally changed. This
 -- could be caused by the following:
@@ -58,13 +58,13 @@ import Data.Aeson.Encode.Pretty
 -- compare with golden file if it exists. Golden file encodes json format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
-goldenADTSpecs :: forall a. (ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a) =>
+goldenADTSpecs :: forall a. (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
   Settings -> Proxy a -> Spec
 goldenADTSpecs settings proxy = goldenADTSpecsWithNote settings proxy Nothing
 
 -- | same as 'goldenADTSpecs' but has the option of passing a note to the
 -- 'describe' function.
-goldenADTSpecsWithNote :: forall a. (ToADTArbitrary a, Eq a, Show a, ToJSON a, FromJSON a) =>
+goldenADTSpecsWithNote :: forall a. (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
   Settings -> Proxy a -> Maybe String -> Spec
 goldenADTSpecsWithNote settings Proxy mNote = do
   (moduleName,(typeName,constructors)) <- runIO $ fmap (adtModuleName &&& adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
@@ -74,7 +74,7 @@ goldenADTSpecsWithNote settings Proxy mNote = do
     note = maybe "" (" " ++) mNote
 
 -- | test a single set of values from a constructor for a given type.
-testConstructor :: forall a. (Eq a, Show a, FromJSON a, ToJSON a, ToADTArbitrary a) =>
+testConstructor :: forall a. (Eq a, Show a, Serialize a, ToADTArbitrary a) =>
   Settings -> String -> String -> ConstructorArbitraryPair a -> SpecWith ( Arg (IO ()))
 testConstructor Settings{..} moduleName typeName cap =
   it ("produces the same JSON as is found in " ++ goldenFile) $ do
@@ -105,7 +105,7 @@ testConstructor Settings{..} moduleName typeName cap =
 
 -- | The golden files already exist. Serialize values with the same seed from
 -- the golden files of each constructor and compare.
-compareWithGolden :: forall a. (Show a, Eq a, FromJSON a, ToJSON a, ToADTArbitrary a) =>
+compareWithGolden :: forall a. (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
   RandomMismatchOption -> String -> Maybe String -> String -> ConstructorArbitraryPair a -> FilePath -> IO ()
 compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
   goldenSeed <- readSeed =<< readFile goldenFile
@@ -169,7 +169,7 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
         "INFO: Written the re-encodings into " ++ faultyReencodedFile ++ "."
 
 -- | The golden files do not exist. Create them for each constructor.
-createGoldenFile :: forall a. (ToJSON a, ToADTArbitrary a) =>
+createGoldenFile :: forall a. (Serialize a, ToADTArbitrary a) =>
   Int -> ConstructorArbitraryPair a -> FilePath -> IO ()
 createGoldenFile sampleSize cap goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
@@ -226,7 +226,7 @@ mkRandomADTSamplesForConstructor sampleSize Proxy conName rSeed = do
     gen = setSeed (fromIntegral rSeed) $ replicateM correctedSampleSize (toADTArbitrary (Proxy :: Proxy a))
 
 -- | Make a Golden File for the Proxy of a type if the file does not exist.
-mkGoldenFileForType :: forall a. (ToJSON a, ToADTArbitrary a) => Int -> Proxy a -> FilePath -> IO ()
+mkGoldenFileForType :: forall a. (Serialize a, ToADTArbitrary a) => Int -> Proxy a -> FilePath -> IO ()
 mkGoldenFileForType sampleSize Proxy goldenPath = do
   (typeName, constructors) <- fmap (adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
   mapM_
