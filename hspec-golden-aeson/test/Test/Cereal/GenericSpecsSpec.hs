@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Test.Aeson.GenericSpecsSpec where
+module Test.Cereal.GenericSpecsSpec where
 
 import Data.Proxy
 import System.Directory
-import Test.Aeson.GenericSpecs
-import Test.Aeson.Internal.Utils (RandomMismatchOption (..))
+import Test.Cereal.GenericSpecs
+import Test.Cereal.Internal.Utils (RandomMismatchOption (..))
 import Test.Hspec
 import Test.Hspec.Core.Runner
 -- various iterations of a Product and Sum Type and their serializations
