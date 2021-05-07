@@ -1,5 +1,5 @@
 {-|
-Module      : Test.Aeson.Internal.ADT.GoldenSpecs
+Module      : Test.Cereal.Internal.ADT.GoldenSpecs
 Description : Golden tests for ToADTArbitrary
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -17,7 +17,7 @@ Internal module, use at your own risk.
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Test.Aeson.Internal.ADT.GoldenSpecs where
+module Test.Cereal.Internal.ADT.GoldenSpecs where
 
 import           Control.Arrow
 import           Control.Exception
@@ -36,7 +36,7 @@ import           System.Environment        (lookupEnv)
 import           System.FilePath
 import           System.Random
 
-import           Test.Aeson.Internal.ADT.Utils
+import           Test.Cereal.Internal.ADT.Utils
 import           Test.Hspec
 import           Test.HUnit.Lang (HUnitFailure)
 import           Test.QuickCheck

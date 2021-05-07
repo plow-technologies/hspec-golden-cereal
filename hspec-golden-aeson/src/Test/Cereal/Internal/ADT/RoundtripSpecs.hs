@@ -1,5 +1,5 @@
 {-|
-Module      : Test.Aeson.Internal.ADT.RoundtripSpecs
+Module      : Test.Cereal.Internal.ADT.RoundtripSpecs
 Description : Roundtrip tests for ToADTArbitrary
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -11,7 +11,7 @@ Internal module, use at your own risk.
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Test.Aeson.Internal.ADT.RoundtripSpecs where
+module Test.Cereal.Internal.ADT.RoundtripSpecs where
 
 import           Control.Arrow
 
@@ -19,7 +19,7 @@ import qualified Data.Aeson as Aeson
 import           Data.Aeson as Aeson hiding (encode)
 import           Data.Typeable
 
-import           Test.Aeson.Internal.Utils
+import           Test.Cereal.Internal.Utils
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary.ADT

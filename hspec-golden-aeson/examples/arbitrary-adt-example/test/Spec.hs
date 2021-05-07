@@ -1,6 +1,6 @@
 import Data.Proxy
 import Lib (Person, OnOrOff)
-import Test.Aeson.GenericSpecs (mkGoldenFileForType)
+import Test.Cereal.GenericSpecs (mkGoldenFileForType)
 
 main :: IO ()
 main = do

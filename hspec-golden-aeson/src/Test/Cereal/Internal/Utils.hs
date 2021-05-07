@@ -1,5 +1,5 @@
 {-|
-Module      : Test.Aeson.Internal.Utils
+Module      : Test.Cereal.Internal.Utils
 Description : Internal types, functions and values
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -16,7 +16,7 @@ Stability   : Beta
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Test.Aeson.Internal.Utils where
+module Test.Cereal.Internal.Utils where
 
 import Control.Exception
 import           Data.ByteString.Lazy (ByteString)

@@ -1,5 +1,5 @@
 {-|
-Module      : Test.Aeson.GenericSpecs
+Module      : Test.Cereal.GenericSpecs
 Description : Export all necessary functions
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -27,7 +27,7 @@ This package provides tools for testing Aeson serialization.
 {-# LANGUAGE UndecidableInstances #-}
 
 
-module Test.Aeson.GenericSpecs
+module Test.Cereal.GenericSpecs
 {-  (
     -- * Arbitrary testing
     goldenSpecs
@@ -54,24 +54,22 @@ module Test.Aeson.GenericSpecs
   , Proxy(..)
   )-} where
 
-import           Data.Aeson                            hiding (encode, decode)
-
 import           Data.Proxy
 import           Data.Typeable
 
-import           Test.Aeson.Internal.ADT.GoldenSpecs    (goldenADTSpecs, mkGoldenFileForType)
-import           Test.Aeson.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
-import           Test.Aeson.Internal.GoldenSpecs        (goldenSpecs)
-import           Test.Aeson.Internal.RoundtripSpecs     (roundtripSpecs)
-import           Test.Aeson.Internal.Utils
-import qualified           Test.Aeson.Internal.ADT.Utils as Temp
+import           Test.Cereal.Internal.ADT.GoldenSpecs    (goldenADTSpecs, mkGoldenFileForType)
+import           Test.Cereal.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
+import           Test.Cereal.Internal.GoldenSpecs        (goldenSpecs)
+import           Test.Cereal.Internal.RoundtripSpecs     (roundtripSpecs)
+import           Test.Cereal.Internal.Utils
+import qualified           Test.Cereal.Internal.ADT.Utils as Temp
 import           Test.Hspec
 import           Test.QuickCheck
-import Data.Aeson.Encode.Pretty
 import           Test.QuickCheck.Arbitrary.ADT
 import           Data.ByteString.Lazy (ByteString)
 import qualified Data.Serialize as Cereal
 import GHC.Exts
+import Data.Aeson
 
 -- | run roundtrip and golden test for a type.
 -- sampleSize is used only when creating the golden file. When it is
@@ -84,7 +82,7 @@ roundtripAndGoldenSpecs proxy =
 
 -- | 'roundtripAndGoldenSpecs' with custom settings.
 roundtripAndGoldenSpecsWithSettings :: forall a.
-  (Arbitrary a, Cereal.Serialize a, Typeable a)
+  (Arbitrary a, Cereal.Serialize a, Typeable a, Show a)
   => Settings -> Proxy a -> Spec
 roundtripAndGoldenSpecsWithSettings settings proxy = do
   roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
@@ -106,27 +104,6 @@ roundtripAndGoldenADTSpecsWithSettings :: forall a.
 roundtripAndGoldenADTSpecsWithSettings settings proxy = do
   roundtripADTSpecs proxy
   goldenADTSpecs settings proxy
-
-
-encodePrettySortedKeys :: ToJSON a => a -> ByteString
-encodePrettySortedKeys = encodePretty' defConfig { confCompare = compare }
-
-instance FromJSON a => FromJSON (RandomSamples a)
-instance ToJSON   a => ToJSON   (RandomSamples a)
-
-data GoldenJson a = GoldenJson a deriving (Show)
-
-class (ToJSON a, FromJSON a) => ToFromJSON a
-
-instance (ToJSON a, FromJSON a) => ToFromJSON a
-
-instance GoldenSerializer GoldenJson where
-  type UnparsedBody GoldenJson = Value
-  type Ctx GoldenJson = ToFromJSON
-  encode = encodePrettySortedKeys . unlift
-  decode = fmap lift . eitherDecode 
-  lift = GoldenJson
-  unlift (GoldenJson x) = x
 
 instance Cereal.Serialize a => Cereal.Serialize (RandomSamples a)
 

@@ -1,5 +1,5 @@
 {-|
-Module      : Test.Aeson.Internal.RoundtripSpecs
+Module      : Test.Cereal.Internal.RoundtripSpecs
 Description : Roundtrip tests for Arbitrary
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -12,12 +12,12 @@ Internal module, use at your own risk.
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications     #-}
 
-module Test.Aeson.Internal.RoundtripSpecs where
+module Test.Cereal.Internal.RoundtripSpecs where
 
 import           Data.Aeson as Aeson
 import           Data.Typeable
 
-import           Test.Aeson.Internal.Utils
+import           Test.Cereal.Internal.Utils
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.Hspec.QuickCheck

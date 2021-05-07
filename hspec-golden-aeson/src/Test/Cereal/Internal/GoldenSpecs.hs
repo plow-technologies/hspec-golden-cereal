@@ -1,6 +1,6 @@
 
 {-|
-Module      : Test.Aeson.Internal.GoldenSpecs
+Module      : Test.Cereal.Internal.GoldenSpecs
 Description : Golden tests for Arbitrary
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -19,7 +19,7 @@ Internal module, use at your own risk.
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications     #-}
 
-module Test.Aeson.Internal.GoldenSpecs where
+module Test.Cereal.Internal.GoldenSpecs where
 
 import           Control.Exception
 import           Control.Monad
@@ -38,7 +38,7 @@ import           System.Environment (lookupEnv)
 import           System.FilePath
 import           System.Random
 
-import           Test.Aeson.Internal.Utils
+import           Test.Cereal.Internal.Utils
 import           Test.Hspec
 import           Test.HUnit.Lang (HUnitFailure)
 import           Test.QuickCheck

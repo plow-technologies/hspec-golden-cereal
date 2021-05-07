@@ -38,7 +38,7 @@ import Test.QuickCheck (Arbitrary (..), oneof)
 import Test.QuickCheck.Arbitrary.ADT (ToADTArbitrary)
 
 -- hspec-golden-aeson
-import Test.Aeson.GenericSpecs (mkGoldenFileForType)
+import Test.Cereal.GenericSpecs (mkGoldenFileForType)
 
 -- product type
 data Person =

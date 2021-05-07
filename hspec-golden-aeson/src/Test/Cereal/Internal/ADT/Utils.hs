@@ -1,5 +1,5 @@
 {-|
-Module      : Test.Aeson.Internal.Utils
+Module      : Test.Cereal.Internal.Utils
 Description : Internal types, functions and values
 Copyright   : (c) Plow Technologies, 2016
 License     : BSD3
@@ -14,7 +14,7 @@ Stability   : Beta
 {-# LANGUAGE DeriveGeneric        #-}
 
 
-module Test.Aeson.Internal.ADT.Utils where
+module Test.Cereal.Internal.ADT.Utils where
 
 import           Control.Exception
 

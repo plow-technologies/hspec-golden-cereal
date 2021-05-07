@@ -16,13 +16,13 @@ extra-source-files:
 library:
   source-dirs: src
   exposed-modules: 
-  - Test.Aeson.GenericSpecs
-  - Test.Aeson.Internal.ADT.GoldenSpecs
-  - Test.Aeson.Internal.ADT.RoundtripSpecs
-  - Test.Aeson.Internal.GoldenSpecs
-  - Test.Aeson.Internal.RoundtripSpecs
-  - Test.Aeson.Internal.RandomSamples
-  - Test.Aeson.Internal.Utils
+  - Test.Cereal.GenericSpecs
+  - Test.Cereal.Internal.ADT.GoldenSpecs
+  - Test.Cereal.Internal.ADT.RoundtripSpecs
+  - Test.Cereal.Internal.GoldenSpecs
+  - Test.Cereal.Internal.RoundtripSpecs
+  - Test.Cereal.Internal.RandomSamples
+  - Test.Cereal.Internal.Utils
   dependencies:
   - base >= 4.7 && < 5
   - aeson
