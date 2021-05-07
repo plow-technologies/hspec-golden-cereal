@@ -36,6 +36,7 @@ library:
   - QuickCheck
   - transformers
   - HUnit
+  - cereal
   ghc-options:
   - -Wall
 #  - -Werror

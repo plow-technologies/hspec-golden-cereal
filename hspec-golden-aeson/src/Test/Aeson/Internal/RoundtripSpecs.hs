@@ -10,9 +10,9 @@ Internal module, use at your own risk.
 -}
 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications     #-}
 
 module Test.Aeson.Internal.RoundtripSpecs where
-
 
 import           Data.Aeson as Aeson
 import           Data.Typeable
@@ -31,55 +31,29 @@ import           Test.Hspec.QuickCheck
 -- - read them back into Haskell (using 'FromJSON') and
 -- - make sure that the result is the same as the value it started with
 --   (using 'Eq').
-roundtripSpecs :: forall a .
-  (Typeable a, Arbitrary a, ToJSON a, FromJSON a) =>
-  Proxy a -> Spec
+
+roundtripSpecs :: forall s a .
+  (Typeable a, Show (s a), Arbitrary (s a), GoldenSerializer s, Ctx s a) =>
+  Proxy (s a) -> Spec
 roundtripSpecs proxy = genericAesonRoundtripWithNote proxy Nothing
 
 -- | Same as 'roundtripSpecs', but optionally add notes to the 'describe'
 -- function.
-genericAesonRoundtripWithNote :: forall a .
-  (Typeable a, Arbitrary a, ToJSON a, FromJSON a) =>
-  Proxy a -> Maybe String -> Spec
+genericAesonRoundtripWithNote :: forall s a .
+  (Typeable a, Show (s a), Arbitrary (s a), GoldenSerializer s, Ctx s a) =>
+  Proxy (s a) -> Maybe String -> Spec
 genericAesonRoundtripWithNote proxy mNote = do
-  let typeIdentifier = show (typeRep proxy)
+  let typeIdentifier = show (typeRep (Proxy :: Proxy a))
   result <- genericAesonRoundtripWithNotePlain proxy mNote typeIdentifier
   return result
 
 -- | Same as 'genericAesonRoundtripWithNote', but no need for Typeable, Eq, or Show
-genericAesonRoundtripWithNotePlain :: forall a .
-  (Arbitrary a, ToJSON a, FromJSON a) =>
-  Proxy a -> Maybe String -> String -> Spec
+genericAesonRoundtripWithNotePlain :: forall s a .
+  (Show (s a), Arbitrary (s a), GoldenSerializer s, Ctx s a) =>
+  Proxy (s a) -> Maybe String -> String -> Spec
 genericAesonRoundtripWithNotePlain _ mNote typeIdentifier = do
   let note = maybe "" (" " ++) mNote
-      checkAesonEncodingEquality' :: JsonShow a -> Bool
-      checkAesonEncodingEquality' = checkAesonEncodingEquality
   
   describe ("JSON encoding of " ++ addBrackets (typeIdentifier) ++ note) $
     prop "allows to encode values with aeson and read them back"  
-          (checkAesonEncodingEquality' )
-
--- | Used to eliminate the need for an Eq instance
-newtype JsonShow a = JsonShow a 
-
-instance ToJSON a => Show (JsonShow a) where 
-    show (JsonShow v) = show . Aeson.encode $ v 
-
-instance ToJSON a => ToJSON (JsonShow a) where
-    toJSON (JsonShow a) = toJSON a
-
-instance FromJSON a => FromJSON (JsonShow a) where
-     parseJSON v = JsonShow <$> (parseJSON v)
-
-instance Arbitrary a => Arbitrary (JsonShow a) where
-    arbitrary = JsonShow <$> arbitrary 
-
--- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
-checkAesonEncodingEquality :: forall a . (ToJSON a, FromJSON a) => JsonShow a -> Bool
-checkAesonEncodingEquality (JsonShow a) =  
-  let byteStrA = Aeson.encode a
-      decodedVal =  (eitherDecode byteStrA) :: Either String a
-      eitherByteStrB = Aeson.encode <$> decodedVal
-  in (Right byteStrA) == eitherByteStrB
-
-
+          (checkEncodingEquality @s @a )

@@ -70,6 +70,7 @@ import           Test.QuickCheck
 import Data.Aeson.Encode.Pretty
 import           Test.QuickCheck.Arbitrary.ADT
 import           Data.ByteString.Lazy (ByteString)
+import qualified Data.Serialize as Cereal
 import GHC.Exts
 
 -- | run roundtrip and golden test for a type.
@@ -82,12 +83,12 @@ roundtripAndGoldenSpecs proxy =
   roundtripAndGoldenSpecsWithSettings defaultSettings proxy
 
 -- | 'roundtripAndGoldenSpecs' with custom settings.
---roundtripAndGoldenSpecsWithSettings :: forall a.
---  (Arbitrary a, ToJSON a, FromJSON a, Typeable a)
---  => Settings -> Proxy a -> Spec
+roundtripAndGoldenSpecsWithSettings :: forall a.
+  (Arbitrary a, Cereal.Serialize a, Typeable a)
+  => Settings -> Proxy a -> Spec
 roundtripAndGoldenSpecsWithSettings settings proxy = do
-  roundtripSpecs proxy
-  goldenSpecs @GoldenJson settings proxy
+  roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
+  goldenSpecs @GoldenCereal settings proxy
 
 -- | run roundtrip and golden tests for all constructors of a type.
 -- sampleSize is used only when creating the golden files. When they are
@@ -126,3 +127,18 @@ instance GoldenSerializer GoldenJson where
   decode = fmap lift . eitherDecode 
   lift = GoldenJson
   unlift (GoldenJson x) = x
+
+instance Cereal.Serialize a => Cereal.Serialize (RandomSamples a)
+
+data GoldenCereal a = GoldenCereal a deriving (Show)
+
+instance GoldenSerializer GoldenCereal where
+  type UnparsedBody GoldenCereal = ByteString
+  type Ctx GoldenCereal = Cereal.Serialize
+  encode = Cereal.encodeLazy . unlift
+  decode = fmap lift . Cereal.decodeLazy
+  lift = GoldenCereal
+  unlift (GoldenCereal a) = a
+
+instance Arbitrary a => Arbitrary (GoldenCereal a) where
+  arbitrary = GoldenCereal <$> arbitrary 

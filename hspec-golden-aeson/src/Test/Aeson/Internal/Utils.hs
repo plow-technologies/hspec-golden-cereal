@@ -98,10 +98,10 @@ shouldBeIdentity Proxy func =
   property $ \ (a :: a) -> func a `shouldReturn` a
 
 -- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
-checkEncodingEquality :: forall s a . GoldenSerializerConstraints s a => s (RandomSamples a) -> Bool
+checkEncodingEquality :: forall s a . (Ctx s a, GoldenSerializer s) => s a -> Bool
 checkEncodingEquality a =  
   let byteStrA :: ByteString = encode a 
-      decodedVal :: Either String (s (RandomSamples a)) =  decode byteStrA
+      decodedVal :: Either String (s a) =  decode byteStrA
       eitherByteStrB = encode <$> decodedVal  
   in (Right byteStrA) == eitherByteStrB
 
@@ -120,18 +120,7 @@ setSeed rSeed (MkGen g) = MkGen $ \ _randomSeed size -> g (mkQCGen rSeed) size
 
 readRandomSamplesHeader :: (GoldenSerializer s, Ctx s (RandomSamples (UnparsedBody s))) => ByteString -> IO (s (RandomSamples (UnparsedBody s)))
 readRandomSamplesHeader = decodeIO
-{-
--- | Reads the seed without looking at the samples.
-readSeed :: GoldenSerializer f => Proxy (f a) -> ByteString -> IO Int32
-readSeed settings bs = 
-  fmap seed $ decode @f @a settings bs
 
-
-
--- | Read the sample size.
-readSampleSize :: forall toX fromX . fromX ByteString => SerializationSettings toX fromX -> ByteString -> IO Int
-readSampleSize settings = fmap (length . samples) . decodeIO @ByteString settings
--}
 -- | run decode in IO, if it returns Left then throw an error.
 decodeIO :: forall s a . GoldenSerializerConstraints s a  => ByteString -> IO (s (RandomSamples a))
 decodeIO bs = case decode bs of
