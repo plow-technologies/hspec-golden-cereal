@@ -45,6 +45,7 @@ tests:
     dependencies:
     - base
     - aeson
+    - cereal
     - directory
     - hspec
     - hspec-core

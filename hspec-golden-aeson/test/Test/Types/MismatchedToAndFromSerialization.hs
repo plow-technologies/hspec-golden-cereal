@@ -4,6 +4,7 @@
 module Test.Types.MismatchedToAndFromSerialization where
 
 import Data.Aeson
+import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
@@ -26,6 +27,10 @@ instance FromJSON Person where
   parseJSON = withObject "Expected a Person object" $ \o ->
     Person <$> o .: "name"
       <*> o .: "age"
+
+instance Serialize Person where
+  put = \(Person _ newAge) -> putInthost newAge
+  get = pure (Person "name1" 1)
 
 instance ToADTArbitrary Person
 

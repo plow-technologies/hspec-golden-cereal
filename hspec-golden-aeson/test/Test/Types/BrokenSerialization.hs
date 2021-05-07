@@ -4,6 +4,7 @@
 module Test.Types.BrokenSerialization where
 
 import Data.Aeson
+import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
@@ -13,7 +14,7 @@ data Person = Person
     age :: Int
   }
   deriving (Eq, Show, Generic)
-
+{-
 instance ToJSON Person where
   toJSON (Person name' age') =
     object
@@ -24,7 +25,9 @@ instance ToJSON Person where
 instance FromJSON Person where
   parseJSON = withObject "Expected a Person object" $ \o ->
     Person <$> o .: "personName"
-      <*> o .: "personAge"
+      <*> o .: "personAge"-}
+
+instance Serialize Person
 
 instance ToADTArbitrary Person
 
@@ -37,9 +40,7 @@ data SumType
   | SumType3 Double String Int
   deriving (Eq, Show, Generic)
 
-instance ToJSON SumType
-
-instance FromJSON SumType
+instance Serialize SumType
 
 instance ToADTArbitrary SumType
 

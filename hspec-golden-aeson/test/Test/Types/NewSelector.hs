@@ -3,6 +3,7 @@
 module Test.Types.NewSelector where
 
 import Data.Aeson
+import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
@@ -14,9 +15,7 @@ data Person = Person
   }
   deriving (Eq, Show, Generic)
 
-instance ToJSON Person
-
-instance FromJSON Person
+instance Serialize Person
 
 instance ToADTArbitrary Person
 
@@ -29,9 +28,7 @@ data SumType
   | SumType3 Double String Int
   deriving (Eq, Show, Generic)
 
-instance ToJSON SumType
-
-instance FromJSON SumType
+instance Serialize SumType
 
 instance ToADTArbitrary SumType
 
