@@ -57,12 +57,23 @@ import Data.Typeable
 import Test.Cereal.Internal.ADT.GoldenSpecs (goldenADTSpecs, mkGoldenFileForType)
 import Test.Cereal.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
 import Test.Cereal.Internal.ADT.Utils()
-import Test.Cereal.Internal.GoldenSpecs (goldenSpecs)
-import Test.Cereal.Internal.RoundtripSpecs (roundtripSpecs)
+import qualified Test.Cereal.Internal.GoldenSpecs as Golden
+import qualified Test.Cereal.Internal.RoundtripSpecs as Roundtrip
 import Test.Cereal.Internal.Utils
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
+
+roundtripSpecs :: forall a . (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
+roundtripSpecs Proxy = Roundtrip.roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
+
+goldenSpecs :: 
+  forall a.
+  (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) =>
+  Settings ->
+  Proxy a ->
+  Spec
+goldenSpecs settings Proxy = Golden.goldenSpecs settings (Proxy :: Proxy (GoldenCereal a))
 
 -- | run roundtrip and golden test for a type.
 -- sampleSize is used only when creating the golden file. When it is
@@ -79,8 +90,8 @@ roundtripAndGoldenSpecsWithSettings ::
   Proxy a ->
   Spec
 roundtripAndGoldenSpecsWithSettings settings proxy = do
-  roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
-  goldenSpecs @GoldenCereal settings proxy
+  roundtripSpecs proxy
+  goldenSpecs settings proxy
 
 -- | run roundtrip and golden tests for all constructors of a type.
 -- sampleSize is used only when creating the golden files. When they are

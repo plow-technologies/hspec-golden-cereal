@@ -52,9 +52,9 @@ goldenSpecs ::
   forall s a.
   (GoldenSerializerConstraints s a, Typeable a, Arbitrary a) =>
   Settings ->
-  Proxy a ->
+  Proxy (s a) ->
   Spec
-goldenSpecs settings proxy = goldenSpecsWithNote @s settings proxy Nothing
+goldenSpecs settings proxy = goldenSpecsWithNote settings proxy Nothing
 
 -- | same as 'goldenSpecs' but has the option of passing a note to the
 -- 'describe' function.
@@ -62,12 +62,12 @@ goldenSpecsWithNote ::
   forall s a.
   (GoldenSerializerConstraints s a, Typeable a, Arbitrary a) =>
   Settings ->
-  Proxy a ->
+  Proxy (s a) ->
   Maybe String ->
   Spec
 goldenSpecsWithNote settings proxy mNote = do
-  typeNameInfo <- runIO $ mkTypeNameInfo settings proxy
-  goldenSpecsWithNotePlain @s settings typeNameInfo proxy mNote
+  typeNameInfo <- runIO $ mkTypeNameInfo settings (Proxy :: Proxy a)
+  goldenSpecsWithNotePlain settings typeNameInfo proxy mNote
 
 -- | same as 'goldenSpecsWithNote' but does not require a Typeable, Eq or Show instance.
 goldenSpecsWithNotePlain ::
@@ -75,7 +75,7 @@ goldenSpecsWithNotePlain ::
   (GoldenSerializerConstraints s a, Arbitrary a) =>
   Settings ->
   TypeNameInfo a ->
-  Proxy a ->
+  Proxy (s a) ->
   Maybe String ->
   Spec
 goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {typeNameTypeName}) proxy mNote = do
@@ -108,16 +108,16 @@ compareWithGolden ::
   forall s a.
   (GoldenSerializerConstraints s a, Arbitrary a) =>
   TypeNameInfo a ->
-  Proxy a ->
+  Proxy (s a) ->
   FilePath ->
   ComparisonFile ->
   IO ()
-compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do
+compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
   fileContent <- readFile goldenFile
   goldenSampleWithoutBody <- unlift <$> readRandomSamplesHeader @s fileContent
   let goldenSeed = seed goldenSampleWithoutBody
   let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
-  newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize proxy goldenSeed
+  newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
     goldenBytes <- readFile goldenFile
     goldenSamples :: s (RandomSamples a) <- decodeIO goldenBytes
@@ -160,11 +160,11 @@ compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do
           ++ "."
 
 -- | The golden files do not exist. Create it.
-createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy a -> FilePath -> IO ()
-createGoldenfile Settings {..} proxy goldenFile = do
+createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy (s a) -> FilePath -> IO ()
+createGoldenfile Settings {..} Proxy goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO
-  rSamples <- lift @s <$> mkRandomSamples sampleSize proxy rSeed
+  rSamples <- lift @s <$> mkRandomSamples sampleSize (Proxy :: Proxy a) rSeed
   writeFile goldenFile (encode rSamples)
 
   putStrLn $

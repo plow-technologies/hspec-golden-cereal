@@ -19,7 +19,7 @@ import Test.Utils
 -- summaryFailures
 spec :: Spec
 spec = do
-  describe "Test.Aeson.GenericSpecs: roundtripSpecs" $ do
+  describe "Test.Cereal.GenericSpecs: roundtripSpecs" $ do
     it "should pass when ToJSON and FromJSON are defined appropriately" $ do
       (s1, _) <- hspecSilently $ roundtripSpecs (Proxy :: Proxy T.Person)
       summaryFailures s1 `shouldBe` 0
@@ -28,7 +28,7 @@ spec = do
       (s1, _) <- hspecSilently $ roundtripSpecs (Proxy :: Proxy MTFS.Person)
       summaryFailures s1 `shouldBe` 1
 
-  describe "Test.Aeson.GenericSpecs: roundtripADTSpecs" $ do
+  describe "Test.Cereal.GenericSpecs: roundtripADTSpecs" $ do
     it "should pass when ToJSON and FromJSON are defined appropriately" $ do
       (s1, _) <- hspecSilently $ roundtripADTSpecs (Proxy :: Proxy T.Person)
       summaryFailures s1 `shouldBe` 0
@@ -37,7 +37,7 @@ spec = do
       (s1, _) <- hspecSilently $ roundtripADTSpecs (Proxy :: Proxy MTFS.Person)
       summaryFailures s1 `shouldBe` 1
 
-  describe "Test.Aeson.GenericSpecs: goldenSpecs" $ do
+  describe "Test.Cereal.GenericSpecs: goldenSpecs" $ do
     it "create golden test files" $ do
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
@@ -101,7 +101,7 @@ spec = do
       (s1, _) <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy TAS.Person)
       summaryFailures s1 `shouldBe` 1
 
-  describe "Test.Aeson.GenericSpecs: goldenADTSpecs" $ do
+  describe "Test.Cereal.GenericSpecs: goldenADTSpecs" $ do
     it "create golden test files" $ do
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
