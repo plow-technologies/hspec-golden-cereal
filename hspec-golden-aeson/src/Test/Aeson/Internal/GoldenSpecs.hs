@@ -56,20 +56,20 @@ import           Test.QuickCheck
 -- compare with golden file if it exists. Golden file encodes json format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
-goldenSpecs :: forall s a . (GoldenSerializer s, Typeable a, Arbitrary a) =>
+goldenSpecs :: forall s a . (GoldenSerializerConstraints s a, Typeable a, Arbitrary a) =>
   Settings -> Proxy a -> Spec
 goldenSpecs settings proxy = goldenSpecsWithNote @s settings proxy Nothing
 
 -- | same as 'goldenSpecs' but has the option of passing a note to the
 -- 'describe' function.
-goldenSpecsWithNote :: forall s a. (GoldenSerializer s, Typeable a, Arbitrary a) =>
+goldenSpecsWithNote :: forall s a. (GoldenSerializerConstraints s a, Typeable a, Arbitrary a) =>
   Settings -> Proxy a -> Maybe String -> Spec
 goldenSpecsWithNote settings proxy mNote = do
   typeNameInfo    <- runIO $ mkTypeNameInfo settings proxy
   goldenSpecsWithNotePlain @s settings typeNameInfo proxy mNote
 
 -- | same as 'goldenSpecsWithNote' but does not require a Typeable, Eq or Show instance.
-goldenSpecsWithNotePlain :: forall s a . (GoldenSerializer s, Arbitrary a) =>
+goldenSpecsWithNotePlain :: forall s a . (GoldenSerializerConstraints s a, Arbitrary a) =>
   Settings -> TypeNameInfo a -> Proxy a -> Maybe String -> Spec
 goldenSpecsWithNotePlain settings@Settings{..} typeNameInfo@(TypeNameInfo{typeNameTypeName}) proxy mNote = do
   let goldenFile = mkGoldenFile typeNameInfo
@@ -98,7 +98,7 @@ goldenSpecsWithNotePlain settings@Settings{..} typeNameInfo@(TypeNameInfo{typeNa
 -- | The golden files already exist. Serialize values with the same seed from
 -- the golden file and compare the with the JSON in the golden file.
 compareWithGolden :: forall s a .
-  (GoldenSerializer s, Arbitrary a) =>
+  (GoldenSerializerConstraints s a, Arbitrary a) => 
   TypeNameInfo a ->  Proxy a -> FilePath -> ComparisonFile -> IO ()
 compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do  
   fileContent <- readFile goldenFile
@@ -109,7 +109,7 @@ compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do
   whenFails (writeComparisonFile newSamples) $ do
     goldenBytes <- readFile goldenFile
     goldenSamples :: s (RandomSamples a) <- decodeIO goldenBytes
-    if encode @s newSamples == encode @s goldenSamples
+    if encode newSamples == encode goldenSamples
       then return ()
       else do
         -- fallback to testing roundtrip decoding/encoding of golden file
@@ -117,7 +117,7 @@ compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do
           "\n" ++
           "WARNING: Encoding new random samples do not match " ++ goldenFile ++ ".\n" ++
           "  Testing round-trip decoding/encoding of golden file."
-        if encode @s goldenSamples == goldenBytes
+        if encode goldenSamples == goldenBytes
           then return ()
           else do
             writeReencodedComparisonFile goldenSamples
@@ -131,25 +131,24 @@ compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do
         OverwriteGoldenFile -> goldenFile
     faultyReencodedFilePath = mkFaultyReencodedFile typeNameInfo
     writeComparisonFile newSamples = do
-      writeFile filePath (encode @s newSamples)
+      writeFile filePath (encode newSamples)
       putStrLn $
         "\n" ++
         "INFO: Written the current encodings into " ++ filePath ++ "."
     writeReencodedComparisonFile samples = do
-      writeFile faultyReencodedFilePath (encode @s samples)
+      writeFile faultyReencodedFilePath (encode samples)
       putStrLn $
         "\n" ++
         "INFO: Written the reencoded goldenFile into " ++ faultyReencodedFilePath ++ "."
 
 
 -- | The golden files do not exist. Create it.
-createGoldenfile :: forall s a . (GoldenSerializer s, Arbitrary a) =>
-  Settings -> Proxy a -> FilePath -> IO ()
+createGoldenfile :: forall s a . (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy a -> FilePath -> IO ()
 createGoldenfile Settings{..} proxy goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO
-  rSamples <- lift <$> mkRandomSamples sampleSize proxy rSeed
-  writeFile goldenFile (encode @s rSamples)
+  rSamples <- lift @s <$> mkRandomSamples sampleSize proxy rSeed
+  writeFile goldenFile (encode rSamples)
 
   putStrLn $
     "\n" ++

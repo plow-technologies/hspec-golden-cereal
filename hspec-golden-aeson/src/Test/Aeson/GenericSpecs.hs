@@ -23,6 +23,9 @@ This package provides tools for testing Aeson serialization.
 {-# LANGUAGE MultiParamTypeClasses       #-}
 {-# LANGUAGE AllowAmbiguousTypes       #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 
 module Test.Aeson.GenericSpecs
 {-  (
@@ -84,7 +87,7 @@ roundtripAndGoldenSpecs proxy =
 --  => Settings -> Proxy a -> Spec
 roundtripAndGoldenSpecsWithSettings settings proxy = do
   roundtripSpecs proxy
-  --goldenSpecs @GoldenJson1 settings proxy
+  goldenSpecs @GoldenJson settings proxy
 
 -- | run roundtrip and golden tests for all constructors of a type.
 -- sampleSize is used only when creating the golden files. When they are
@@ -112,23 +115,14 @@ instance ToJSON   a => ToJSON   (RandomSamples a)
 
 data GoldenJson a = GoldenJson a deriving (Show)
 
-instance GoldenSerializer1 GoldenJson where
+class (ToJSON a, FromJSON a) => ToFromJSON a
 
-  decode _ = Left "hello"
-  lift a = GoldenJson a
-  unlift (GoldenJson a) = a
+instance (ToJSON a, FromJSON a) => ToFromJSON a
 
-class GoldenSerializer1 (s :: * -> *) where
-  decode :: String -> Either String (s a)
-  lift :: a -> s a
-  unlift :: s a -> a
-
-
-encode12 :: (ToJSON a) => GoldenJson a -> ByteString
-encode12 (GoldenJson a) = encodePrettySortedKeys a
-
-
-test :: (s a -> ByteString) -> s a -> ByteString
-test f s = f s
-
-test2 = test encode12 (GoldenJson ())
+instance GoldenSerializer GoldenJson where
+  type UnparsedBody GoldenJson = Value
+  type Ctx GoldenJson = ToFromJSON
+  encode = encodePrettySortedKeys . unlift
+  decode = fmap lift . eitherDecode 
+  lift = GoldenJson
+  unlift (GoldenJson x) = x

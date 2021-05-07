@@ -14,6 +14,7 @@ Stability   : Beta
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Test.Aeson.Internal.Utils where
 
@@ -31,6 +32,8 @@ import           Test.QuickCheck
 import           GHC.Generics
 import           Test.QuickCheck.Gen
 import           Test.QuickCheck.Random
+
+import GHC.Exts
 
 -- | Option to indicate whether to create a separate comparison file or overwrite the golden file.
 -- A separate file allows you to use `diff` to compare.
@@ -62,10 +65,13 @@ data Settings = Settings
   -- ^ Whether to output a warning or fail the test when the random seed produces different values than the values in the golden file.
   }
 
+type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a), Ctx s (RandomSamples (UnparsedBody s)))
+
 class GoldenSerializer s where
- -- data UnparsedBody s :: *
-  encode :: s a -> ByteString
-  decode :: ByteString -> Either String (s a)
+  type UnparsedBody s :: *
+  type Ctx s :: * -> Constraint
+  encode :: Ctx s a => s a -> ByteString
+  decode :: Ctx s a => ByteString -> Either String (s a)
   lift :: a -> s a
   unlift :: s a -> a
 
@@ -92,10 +98,10 @@ shouldBeIdentity Proxy func =
   property $ \ (a :: a) -> func a `shouldReturn` a
 
 -- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
-checkEncodingEquality :: forall s a . GoldenSerializer s => s (RandomSamples a) -> Bool
+checkEncodingEquality :: forall s a . GoldenSerializerConstraints s a => s (RandomSamples a) -> Bool
 checkEncodingEquality a =  
   let byteStrA :: ByteString = encode a 
-      decodedVal =  decode @s byteStrA
+      decodedVal :: Either String (s (RandomSamples a)) =  decode byteStrA
       eitherByteStrB = encode <$> decodedVal  
   in (Right byteStrA) == eitherByteStrB
 
@@ -112,7 +118,7 @@ data RandomSamples a = RandomSamples {
 setSeed :: Int -> Gen a -> Gen a
 setSeed rSeed (MkGen g) = MkGen $ \ _randomSeed size -> g (mkQCGen rSeed) size
 
-readRandomSamplesHeader :: forall s . GoldenSerializer s => ByteString -> IO (s (RandomSamples ()))
+readRandomSamplesHeader :: (GoldenSerializer s, Ctx s (RandomSamples (UnparsedBody s))) => ByteString -> IO (s (RandomSamples (UnparsedBody s)))
 readRandomSamplesHeader = decodeIO
 {-
 -- | Reads the seed without looking at the samples.
@@ -127,8 +133,8 @@ readSampleSize :: forall toX fromX . fromX ByteString => SerializationSettings t
 readSampleSize settings = fmap (length . samples) . decodeIO @ByteString settings
 -}
 -- | run decode in IO, if it returns Left then throw an error.
-decodeIO :: forall s a . GoldenSerializer s => ByteString -> IO (s (RandomSamples a))
-decodeIO bs = case decode @s bs of
+decodeIO :: forall s a . GoldenSerializerConstraints s a  => ByteString -> IO (s (RandomSamples a))
+decodeIO bs = case decode bs of
   Right a -> return a
   Left msg -> throwIO $ DecodeError msg
 
