@@ -31,7 +31,6 @@ import           Test.QuickCheck
 import           GHC.Generics
 import           Test.QuickCheck.Gen
 import           Test.QuickCheck.Random
-import GHC.Exts (Constraint)
 
 -- | Option to indicate whether to create a separate comparison file or overwrite the golden file.
 -- A separate file allows you to use `diff` to compare.
@@ -63,11 +62,12 @@ data Settings = Settings
   -- ^ Whether to output a warning or fail the test when the random seed produces different values than the values in the golden file.
   }
 
-data SerializationSettings toX fromX = SerializationSettings
-  { encode :: forall a . toX a => RandomSamples a -> ByteString
-  , decode :: forall a . (fromX ByteString, fromX a) => ByteString -> Either String (RandomSamples a)
-  , fileExtension :: String
-  }
+class GoldenSerializer s where
+ -- data UnparsedBody s :: *
+  encode :: s a -> ByteString
+  decode :: ByteString -> Either String (s a)
+  lift :: a -> s a
+  unlift :: s a -> a
 
 -- | A custom directory name or a preselected directory name.
 data GoldenDirectoryOption = CustomDirectoryName String | GoldenDirectory
@@ -92,11 +92,11 @@ shouldBeIdentity Proxy func =
   property $ \ (a :: a) -> func a `shouldReturn` a
 
 -- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
-checkEncodingEquality :: forall a fromX toX . (fromX ByteString, fromX a, toX a, toX ByteString) => SerializationSettings fromX toX -> RandomSamples a -> Bool
-checkEncodingEquality settings a =  
-  let byteStrA = encode settings a 
-      decodedVal :: Either String (RandomSamples a) =  decode settings byteStrA
-      eitherByteStrB = encode settings <$> decodedVal  
+checkEncodingEquality :: forall s a . GoldenSerializer s => s (RandomSamples a) -> Bool
+checkEncodingEquality a =  
+  let byteStrA :: ByteString = encode a 
+      decodedVal =  decode @s byteStrA
+      eitherByteStrB = encode <$> decodedVal  
   in (Right byteStrA) == eitherByteStrB
 
 -- | RandomSamples, using a seed allows you to replicate an arbitrary. By
@@ -112,21 +112,23 @@ data RandomSamples a = RandomSamples {
 setSeed :: Int -> Gen a -> Gen a
 setSeed rSeed (MkGen g) = MkGen $ \ _randomSeed size -> g (mkQCGen rSeed) size
 
-
--- | Reads the seed without looking at the samples.
-readSeed :: forall a fromX toX . (fromX ByteString, fromX a, toX a, toX ByteString) => SerializationSettings fromX toX -> ByteString -> IO Int32
-readSeed settings bs = 
-  fmap seed $ decodeIO @a settings bs
-
+readRandomSamplesHeader :: forall s . GoldenSerializer s => ByteString -> IO (s (RandomSamples ()))
+readRandomSamplesHeader = decodeIO
 {-
+-- | Reads the seed without looking at the samples.
+readSeed :: GoldenSerializer f => Proxy (f a) -> ByteString -> IO Int32
+readSeed settings bs = 
+  fmap seed $ decode @f @a settings bs
+
+
 
 -- | Read the sample size.
-readSampleSize :: SerializationSettings ctx -> ByteString -> IO Int
-readSampleSize settings = fmap (length . samples) . decodeIO @(RandomSamples ByteString) settings
+readSampleSize :: forall toX fromX . fromX ByteString => SerializationSettings toX fromX -> ByteString -> IO Int
+readSampleSize settings = fmap (length . samples) . decodeIO @ByteString settings
 -}
 -- | run decode in IO, if it returns Left then throw an error.
-decodeIO :: forall a fromX toX . (fromX ByteString, fromX a, toX a, toX ByteString) => SerializationSettings fromX toX -> ByteString -> IO (RandomSamples a)
-decodeIO settings bs = case decode settings bs of
+decodeIO :: forall s a . GoldenSerializer s => ByteString -> IO (s (RandomSamples a))
+decodeIO bs = case decode @s bs of
   Right a -> return a
   Left msg -> throwIO $ DecodeError msg
 

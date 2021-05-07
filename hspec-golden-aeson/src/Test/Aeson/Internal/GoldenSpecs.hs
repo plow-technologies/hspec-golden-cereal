@@ -15,6 +15,10 @@ Internal module, use at your own risk.
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeApplications     #-}
+
 module Test.Aeson.Internal.GoldenSpecs where
 
 import           Control.Exception
@@ -25,6 +29,7 @@ import           Data.Int (Int32)
 import           Data.Maybe (isJust)
 import           Data.Proxy
 import           Data.Typeable
+import Data.Coerce
 
 import           Prelude hiding (readFile, writeFile)
 
@@ -51,23 +56,22 @@ import           Test.QuickCheck
 -- compare with golden file if it exists. Golden file encodes json format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
-goldenSpecs :: (Typeable a, Arbitrary a) =>
-  SerializationSettings -> Settings -> Proxy a -> Spec
-goldenSpecs serializationSettings settings proxy = goldenSpecsWithNote serializationSettings settings proxy Nothing
+goldenSpecs :: forall s a . (GoldenSerializer s, Typeable a, Arbitrary a) =>
+  Settings -> Proxy a -> Spec
+goldenSpecs settings proxy = goldenSpecsWithNote @s settings proxy Nothing
 
 -- | same as 'goldenSpecs' but has the option of passing a note to the
 -- 'describe' function.
-goldenSpecsWithNote :: forall a. (Typeable a, Arbitrary a) =>
-  SerializationSettings -> Settings -> Proxy a -> Maybe String -> Spec
-goldenSpecsWithNote serializationSettings settings proxy mNote = do
+goldenSpecsWithNote :: forall s a. (GoldenSerializer s, Typeable a, Arbitrary a) =>
+  Settings -> Proxy a -> Maybe String -> Spec
+goldenSpecsWithNote settings proxy mNote = do
   typeNameInfo    <- runIO $ mkTypeNameInfo settings proxy
-  goldenSpecsWithNotePlain serializationSettings settings typeNameInfo mNote
+  goldenSpecsWithNotePlain @s settings typeNameInfo proxy mNote
 
 -- | same as 'goldenSpecsWithNote' but does not require a Typeable, Eq or Show instance.
-goldenSpecsWithNotePlain :: forall a. (Arbitrary a) =>
-  SerializationSettings -> Settings -> TypeNameInfo a -> Maybe String -> Spec
-goldenSpecsWithNotePlain serializationSettings settings@Settings{..} typeNameInfo@(TypeNameInfo{typeNameTypeName}) mNote = do
-  let proxy = Proxy :: Proxy a  
+goldenSpecsWithNotePlain :: forall s a . (GoldenSerializer s, Arbitrary a) =>
+  Settings -> TypeNameInfo a -> Proxy a -> Maybe String -> Spec
+goldenSpecsWithNotePlain settings@Settings{..} typeNameInfo@(TypeNameInfo{typeNameTypeName}) proxy mNote = do
   let goldenFile = mkGoldenFile typeNameInfo
       note = maybe "" (" " ++) mNote
 
@@ -77,33 +81,35 @@ goldenSpecsWithNotePlain serializationSettings settings@Settings{..} typeNameInf
       let fixIfFlag err = do
             doFix <- isJust <$> lookupEnv "RECREATE_BROKEN_GOLDEN"
             if doFix
-              then createGoldenfile serializationSettings settings proxy goldenFile
+              then createGoldenfile @s settings proxy goldenFile
               else throwIO err
       if exists
-        then compareWithGolden serializationSettings typeNameInfo proxy goldenFile comparisonFile
+        then compareWithGolden @s typeNameInfo proxy goldenFile comparisonFile
           `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err)
                     , Handler (\(err :: DecodeError) -> fixIfFlag err)
                     ]
         else do
           doCreate <- isJust <$> lookupEnv "CREATE_MISSING_GOLDEN"
           if doCreate
-            then createGoldenfile serializationSettings settings proxy goldenFile
+            then createGoldenfile @s settings proxy goldenFile
             else expectationFailure $ "Missing golden file: " <> goldenFile
 
     
 -- | The golden files already exist. Serialize values with the same seed from
 -- the golden file and compare the with the JSON in the golden file.
-compareWithGolden :: forall a .
-  ( Arbitrary a) =>
-  SerializationSettings -> TypeNameInfo a ->  Proxy a  -> FilePath -> ComparisonFile ->IO ()
-compareWithGolden serializationSettings typeNameInfo proxy goldenFile comparisonFile = do  
-  goldenSeed <- readSeed serializationSettings =<< readFile goldenFile
-  sampleSize <- readSampleSize serializationSettings =<< readFile goldenFile
-  newSamples <- mkRandomSamples sampleSize proxy goldenSeed
+compareWithGolden :: forall s a .
+  (GoldenSerializer s, Arbitrary a) =>
+  TypeNameInfo a ->  Proxy a -> FilePath -> ComparisonFile -> IO ()
+compareWithGolden typeNameInfo proxy goldenFile comparisonFile = do  
+  fileContent <- readFile goldenFile
+  goldenSampleWithoutBody <- unlift <$> readRandomSamplesHeader @s fileContent
+  let goldenSeed = seed goldenSampleWithoutBody
+  let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
+  newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize proxy goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
     goldenBytes <- readFile goldenFile
-    goldenSamples <- decodeIO serializationSettings goldenBytes
-    if encode serializationSettings newSamples == encode serializationSettings goldenSamples
+    goldenSamples :: s (RandomSamples a) <- decodeIO goldenBytes
+    if encode @s newSamples == encode @s goldenSamples
       then return ()
       else do
         -- fallback to testing roundtrip decoding/encoding of golden file
@@ -111,7 +117,7 @@ compareWithGolden serializationSettings typeNameInfo proxy goldenFile comparison
           "\n" ++
           "WARNING: Encoding new random samples do not match " ++ goldenFile ++ ".\n" ++
           "  Testing round-trip decoding/encoding of golden file."
-        if encode serializationSettings goldenSamples == goldenBytes
+        if encode @s goldenSamples == goldenBytes
           then return ()
           else do
             writeReencodedComparisonFile goldenSamples
@@ -125,25 +131,25 @@ compareWithGolden serializationSettings typeNameInfo proxy goldenFile comparison
         OverwriteGoldenFile -> goldenFile
     faultyReencodedFilePath = mkFaultyReencodedFile typeNameInfo
     writeComparisonFile newSamples = do
-      writeFile filePath (encode serializationSettings newSamples)
+      writeFile filePath (encode @s newSamples)
       putStrLn $
         "\n" ++
         "INFO: Written the current encodings into " ++ filePath ++ "."
     writeReencodedComparisonFile samples = do
-      writeFile faultyReencodedFilePath (encode serializationSettings samples)
+      writeFile faultyReencodedFilePath (encode @s samples)
       putStrLn $
         "\n" ++
         "INFO: Written the reencoded goldenFile into " ++ faultyReencodedFilePath ++ "."
 
 
 -- | The golden files do not exist. Create it.
-createGoldenfile :: forall a . (Arbitrary a) =>
-  SerializationSettings -> Settings -> Proxy a -> FilePath -> IO ()
-createGoldenfile serializationSettings Settings{..} proxy goldenFile = do
+createGoldenfile :: forall s a . (GoldenSerializer s, Arbitrary a) =>
+  Settings -> Proxy a -> FilePath -> IO ()
+createGoldenfile Settings{..} proxy goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO
-  rSamples <- mkRandomSamples sampleSize proxy rSeed
-  writeFile goldenFile (encode serializationSettings rSamples)
+  rSamples <- lift <$> mkRandomSamples sampleSize proxy rSeed
+  writeFile goldenFile (encode @s rSamples)
 
   putStrLn $
     "\n" ++
@@ -181,9 +187,9 @@ mkFaultyReencodedFile (TypeNameInfo {typeNameTypeName,typeNameModuleName, typeNa
 
 -- | Create a number of arbitrary instances of a type
 -- a sample size and a random seed.
-mkRandomSamples :: forall a . Arbitrary a =>
+mkRandomSamples :: forall a . (Arbitrary a) =>
   Int -> Proxy a -> Int32 -> IO (RandomSamples a)
-mkRandomSamples sampleSize Proxy rSeed = RandomSamples rSeed <$> generate gen
+mkRandomSamples sampleSize Proxy rSeed = (RandomSamples rSeed) <$> generate gen
   where
     correctedSampleSize = if sampleSize <= 0 then 1 else sampleSize
     gen :: Gen [a]

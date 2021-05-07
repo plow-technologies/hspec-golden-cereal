@@ -14,11 +14,18 @@ This package provides tools for testing Aeson serialization.
 
 -}
 
+{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE MultiParamTypeClasses       #-}
+{-# LANGUAGE AllowAmbiguousTypes       #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Test.Aeson.GenericSpecs
-  (
+{-  (
     -- * Arbitrary testing
     goldenSpecs
   , roundtripSpecs
@@ -42,9 +49,10 @@ module Test.Aeson.GenericSpecs
 
   -- * re-exports
   , Proxy(..)
-  ) where
+  )-} where
 
-import           Data.Aeson                             (FromJSON, ToJSON, eitherDecode)
+import           Data.Aeson                            hiding (encode, decode)
+
 import           Data.Proxy
 import           Data.Typeable
 
@@ -59,23 +67,24 @@ import           Test.QuickCheck
 import Data.Aeson.Encode.Pretty
 import           Test.QuickCheck.Arbitrary.ADT
 import           Data.ByteString.Lazy (ByteString)
+import GHC.Exts
 
 -- | run roundtrip and golden test for a type.
 -- sampleSize is used only when creating the golden file. When it is
 -- compared, the sampleSize is derived from the file.
-roundtripAndGoldenSpecs :: forall a.
-  (Arbitrary a, ToJSON a, FromJSON a, Typeable a)
-  => Proxy a -> Spec
+--roundtripAndGoldenSpecs :: forall a.
+--  (Arbitrary a, ToJSON a, FromJSON a, Typeable a)
+--  => Proxy a -> Spec
 roundtripAndGoldenSpecs proxy =
   roundtripAndGoldenSpecsWithSettings defaultSettings proxy
 
 -- | 'roundtripAndGoldenSpecs' with custom settings.
-roundtripAndGoldenSpecsWithSettings :: forall a.
-  (Arbitrary a, ToJSON a, FromJSON a, Typeable a)
-  => Settings -> Proxy a -> Spec
+--roundtripAndGoldenSpecsWithSettings :: forall a.
+--  (Arbitrary a, ToJSON a, FromJSON a, Typeable a)
+--  => Settings -> Proxy a -> Spec
 roundtripAndGoldenSpecsWithSettings settings proxy = do
   roundtripSpecs proxy
-  goldenSpecs jsonSerializationSettings settings proxy
+  --goldenSpecs @GoldenJson1 settings proxy
 
 -- | run roundtrip and golden tests for all constructors of a type.
 -- sampleSize is used only when creating the golden files. When they are
@@ -98,12 +107,28 @@ roundtripAndGoldenADTSpecsWithSettings settings proxy = do
 encodePrettySortedKeys :: ToJSON a => a -> ByteString
 encodePrettySortedKeys = encodePretty' defConfig { confCompare = compare }
 
-
-jsonSerializationSettings = SerializationSettings {
-  encode = encodePrettySortedKeys,
-  decode = eitherDecode,
-  fileExtension = "json"
-}
-
 instance FromJSON a => FromJSON (RandomSamples a)
 instance ToJSON   a => ToJSON   (RandomSamples a)
+
+data GoldenJson a = GoldenJson a deriving (Show)
+
+instance GoldenSerializer1 GoldenJson where
+
+  decode _ = Left "hello"
+  lift a = GoldenJson a
+  unlift (GoldenJson a) = a
+
+class GoldenSerializer1 (s :: * -> *) where
+  decode :: String -> Either String (s a)
+  lift :: a -> s a
+  unlift :: s a -> a
+
+
+encode12 :: (ToJSON a) => GoldenJson a -> ByteString
+encode12 (GoldenJson a) = encodePrettySortedKeys a
+
+
+test :: (s a -> ByteString) -> s a -> ByteString
+test f s = f s
+
+test2 = test encode12 (GoldenJson ())
