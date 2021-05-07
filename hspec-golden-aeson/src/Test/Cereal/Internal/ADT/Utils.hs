@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- |
 -- Module      : Test.Cereal.Internal.Utils
 -- Description : Internal types, functions and values
@@ -16,15 +16,8 @@ module Test.Cereal.Internal.ADT.Utils where
 import Control.Exception
 import Data.ByteString.Lazy (ByteString)
 import Data.Int (Int32)
-import Data.Proxy
 import Data.Serialize
-import Data.Typeable
-import GHC.Generics
 import Test.Cereal.Internal.Utils (RandomSamples (..))
-import Test.Hspec
-import Test.QuickCheck
-import Test.QuickCheck.Gen
-import Test.QuickCheck.Random
 import Prelude
 
 -- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance

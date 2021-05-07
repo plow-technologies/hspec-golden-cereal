@@ -20,7 +20,7 @@ module Test.Cereal.Internal.ADT.GoldenSpecs where
 import Control.Arrow
 import Control.Exception
 import Control.Monad
-import Data.ByteString.Lazy (ByteString, readFile, writeFile)
+import Data.ByteString.Lazy (readFile, writeFile)
 import Data.Int (Int32)
 import Data.Maybe (isJust)
 import Data.Proxy

@@ -21,7 +21,6 @@ module Test.Cereal.Internal.GoldenSpecs where
 import Control.Exception
 import Control.Monad
 import Data.ByteString.Lazy hiding (putStrLn)
-import Data.Coerce
 import Data.Int (Int32)
 import Data.Maybe (isJust)
 import Data.Proxy

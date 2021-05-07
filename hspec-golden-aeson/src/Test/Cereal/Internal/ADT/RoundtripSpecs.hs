@@ -10,11 +10,7 @@
 --
 -- Internal module, use at your own risk.
 module Test.Cereal.Internal.ADT.RoundtripSpecs where
-
-import Control.Arrow
-import Control.Exception
-import Control.Monad
-import Data.ByteString.Lazy (ByteString)
+  
 import Data.Foldable (traverse_)
 import Data.Serialize
 import Data.Typeable

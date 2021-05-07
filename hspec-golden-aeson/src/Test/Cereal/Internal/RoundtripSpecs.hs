@@ -12,7 +12,6 @@
 -- Internal module, use at your own risk.
 module Test.Cereal.Internal.RoundtripSpecs where
 
-import Data.Aeson as Aeson
 import Data.Typeable
 import Test.Cereal.Internal.Utils
 import Test.Hspec

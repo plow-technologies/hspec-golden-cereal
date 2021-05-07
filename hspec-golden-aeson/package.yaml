@@ -21,7 +21,6 @@ library:
   - Test.Cereal.Internal.ADT.RoundtripSpecs
   - Test.Cereal.Internal.GoldenSpecs
   - Test.Cereal.Internal.RoundtripSpecs
-  - Test.Cereal.Internal.RandomSamples
   - Test.Cereal.Internal.Utils
   dependencies:
   - base >= 4.7 && < 5

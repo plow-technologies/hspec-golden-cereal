@@ -23,9 +23,8 @@
 -- - Test that 'ToJSON' and 'FromJSON' instances are isomorphic.
 -- - Alert you when unexpected changes in Aeson serialization occur.
 -- - Record JSON formatting of Haskell types.
-module Test.Cereal.GenericSpecs where
-
-{-  (
+module Test.Cereal.GenericSpecs 
+  (
     -- * Arbitrary testing
     goldenSpecs
   , roundtripSpecs
@@ -49,17 +48,15 @@ module Test.Cereal.GenericSpecs where
 
   -- * re-exports
   , Proxy(..)
-  )-}
+  ) where
 
-import Data.Aeson
 import Data.ByteString.Lazy (ByteString)
 import Data.Proxy
 import qualified Data.Serialize as Cereal
 import Data.Typeable
-import GHC.Exts
 import Test.Cereal.Internal.ADT.GoldenSpecs (goldenADTSpecs, mkGoldenFileForType)
 import Test.Cereal.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
-import Test.Cereal.Internal.ADT.Utils
+import Test.Cereal.Internal.ADT.Utils()
 import Test.Cereal.Internal.GoldenSpecs (goldenSpecs)
 import Test.Cereal.Internal.RoundtripSpecs (roundtripSpecs)
 import Test.Cereal.Internal.Utils
@@ -70,9 +67,7 @@ import Test.QuickCheck.Arbitrary.ADT
 -- | run roundtrip and golden test for a type.
 -- sampleSize is used only when creating the golden file. When it is
 -- compared, the sampleSize is derived from the file.
--- roundtripAndGoldenSpecs :: forall a.
---  (Arbitrary a, ToJSON a, FromJSON a, Typeable a)
---  => Proxy a -> Spec
+roundtripAndGoldenSpecs :: (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
 roundtripAndGoldenSpecs proxy =
   roundtripAndGoldenSpecsWithSettings defaultSettings proxy
 
