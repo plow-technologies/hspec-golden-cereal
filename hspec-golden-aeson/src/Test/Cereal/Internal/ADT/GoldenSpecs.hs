@@ -1,49 +1,41 @@
-{-|
-Module      : Test.Cereal.Internal.ADT.GoldenSpecs
-Description : Golden tests for ToADTArbitrary
-Copyright   : (c) Plow Technologies, 2016
-License     : BSD3
-Maintainer  : mchaver@gmail.com
-Stability   : Beta
-
-Internal module, use at your own risk.
--}
-
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE RecordWildCards      #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- |
+-- Module      : Test.Cereal.Internal.ADT.GoldenSpecs
+-- Description : Golden tests for ToADTArbitrary
+-- Copyright   : (c) Plow Technologies, 2016
+-- License     : BSD3
+-- Maintainer  : mchaver@gmail.com
+-- Stability   : Beta
+--
+-- Internal module, use at your own risk.
 module Test.Cereal.Internal.ADT.GoldenSpecs where
 
-import Test.Cereal.Internal.Utils
-import           Control.Arrow
-import           Control.Exception
-import           Control.Monad
-       
-import           Data.ByteString.Lazy      (writeFile, readFile)
-import           Data.Int                  (Int32)
-import           Data.Maybe                (isJust)
-import           Data.Proxy
-
-import           Prelude            hiding (writeFile,readFile)
-
-import           System.Directory
-import           System.Environment        (lookupEnv)
-import           System.FilePath
-import           System.Random
-
-import           Test.Cereal.Internal.ADT.Utils
-import           Test.Hspec
-import           Test.HUnit.Lang (HUnitFailure)
-import           Test.QuickCheck
-import           Test.QuickCheck.Arbitrary.ADT
-
-import           Data.ByteString.Lazy (ByteString)
+import Control.Arrow
+import Control.Exception
+import Control.Monad
+import Data.ByteString.Lazy (ByteString, readFile, writeFile)
+import Data.Int (Int32)
+import Data.Maybe (isJust)
+import Data.Proxy
 import Data.Serialize
+import System.Directory
+import System.Environment (lookupEnv)
+import System.FilePath
+import System.Random
+import Test.Cereal.Internal.ADT.Utils
+import Test.Cereal.Internal.Utils
+import Test.HUnit.Lang (HUnitFailure)
+import Test.Hspec
+import Test.QuickCheck
+import Test.QuickCheck.Arbitrary.ADT
+import Prelude hiding (readFile, writeFile)
 
 -- | Tests to ensure that JSON encoding has not unintentionally changed. This
 -- could be caused by the following:
@@ -58,25 +50,40 @@ import Data.Serialize
 -- compare with golden file if it exists. Golden file encodes json format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
-goldenADTSpecs :: forall a. (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
-  Settings -> Proxy a -> Spec
+goldenADTSpecs ::
+  forall a.
+  (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
+  Settings ->
+  Proxy a ->
+  Spec
 goldenADTSpecs settings proxy = goldenADTSpecsWithNote settings proxy Nothing
 
 -- | same as 'goldenADTSpecs' but has the option of passing a note to the
 -- 'describe' function.
-goldenADTSpecsWithNote :: forall a. (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
-  Settings -> Proxy a -> Maybe String -> Spec
+goldenADTSpecsWithNote ::
+  forall a.
+  (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
+  Settings ->
+  Proxy a ->
+  Maybe String ->
+  Spec
 goldenADTSpecsWithNote settings Proxy mNote = do
-  (moduleName,(typeName,constructors)) <- runIO $ fmap (adtModuleName &&& adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
+  (moduleName, (typeName, constructors)) <- runIO $ fmap (adtModuleName &&& adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
   describe ("JSON encoding of " ++ typeName ++ note) $
     mapM_ (testConstructor settings moduleName typeName) constructors
   where
     note = maybe "" (" " ++) mNote
 
 -- | test a single set of values from a constructor for a given type.
-testConstructor :: forall a. (Eq a, Show a, Serialize a, ToADTArbitrary a) =>
-  Settings -> String -> String -> ConstructorArbitraryPair a -> SpecWith ( Arg (IO ()))
-testConstructor Settings{..} moduleName typeName cap =
+testConstructor ::
+  forall a.
+  (Eq a, Show a, Serialize a, ToADTArbitrary a) =>
+  Settings ->
+  String ->
+  String ->
+  ConstructorArbitraryPair a ->
+  SpecWith (Arg (IO ()))
+testConstructor Settings {..} moduleName typeName cap =
   it ("produces the same JSON as is found in " ++ goldenFile) $ do
     exists <- doesFileExist goldenFile
     let fixIfFlag err = do
@@ -85,10 +92,11 @@ testConstructor Settings{..} moduleName typeName cap =
             then createGoldenFile sampleSize cap goldenFile
             else throwIO err
     if exists
-      then compareWithGolden randomMismatchOption topDir mModuleName typeName cap goldenFile
-        `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err)
-                  , Handler (\(err :: AesonDecodeError) -> fixIfFlag err)
-                  ]
+      then
+        compareWithGolden randomMismatchOption topDir mModuleName typeName cap goldenFile
+          `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
+                      Handler (\(err :: AesonDecodeError) -> fixIfFlag err)
+                    ]
       else do
         doCreate <- isJust <$> lookupEnv "CREATE_MISSING_GOLDEN"
         if doCreate
@@ -100,13 +108,21 @@ testConstructor Settings{..} moduleName typeName cap =
       GoldenDirectory -> "golden"
       CustomDirectoryName d -> d
     mModuleName = case useModuleNameAsSubDirectory of
-      True  -> Just moduleName
+      True -> Just moduleName
       False -> Nothing
 
 -- | The golden files already exist. Serialize values with the same seed from
 -- the golden files of each constructor and compare.
-compareWithGolden :: forall a. (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
-  RandomMismatchOption -> String -> Maybe String -> String -> ConstructorArbitraryPair a -> FilePath -> IO ()
+compareWithGolden ::
+  forall a.
+  (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
+  RandomMismatchOption ->
+  String ->
+  Maybe String ->
+  String ->
+  ConstructorArbitraryPair a ->
+  FilePath ->
+  IO ()
 compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
   goldenSeed <- readSeed =<< readFile goldenFile
   sampleSize <- readSampleSize =<< readFile goldenFile
@@ -115,39 +131,35 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
     goldenBytes <- readFile goldenFile
     goldenSamples :: RandomSamples a <- aesonDecodeIO goldenBytes
     if newSamples == goldenSamples
-      then
-        -- random samples match; test encoding of samples (the above check only tested the decoding)
+      then -- random samples match; test encoding of samples (the above check only tested the decoding)
         encodePrettySortedKeys newSamples == goldenBytes `shouldBe` True
       else do
-        let
-          -- whether to pass the test or fail due to random value mismatch
-          finalResult =
-            case randomOption of
-              RandomMismatchWarning -> return ()
-              RandomMismatchError -> expectationFailure "New random samples generated from seed in golden file do not match samples in golden file."
+        let -- whether to pass the test or fail due to random value mismatch
+            finalResult =
+              case randomOption of
+                RandomMismatchWarning -> return ()
+                RandomMismatchError -> expectationFailure "New random samples generated from seed in golden file do not match samples in golden file."
 
         -- do a fallback test to determine whether the mismatch is due to a random sample change only,
         -- or due to a change in encoding
         putStrLn $
-          "\n" ++
-          "WARNING: New random samples do not match those in " ++ goldenFile ++ ".\n" ++
-          "  Testing round-trip decoding/encoding of golden file."
+          "\n"
+            ++ "WARNING: New random samples do not match those in "
+            ++ goldenFile
+            ++ ".\n"
+            ++ "  Testing round-trip decoding/encoding of golden file."
         let reencodedGoldenSamples = encodePrettySortedKeys goldenSamples
         if reencodedGoldenSamples == goldenBytes
-          then
-            -- pass the test because round-trip decode/encode still gives the same bytes
+          then -- pass the test because round-trip decode/encode still gives the same bytes
             finalResult
           else do
             -- how significant is the serialization change?
             writeReencodedComparisonFile goldenSamples
             testSamples :: RandomSamples a <- aesonDecodeIO reencodedGoldenSamples
-            let
-              failureMessage =
-                if testSamples == goldenSamples
-                  then
-                    "Encoding has changed in a minor way; still can read old encodings. See " ++ faultyReencodedFile ++ "."
-                  else
-                    "Encoding has changed in a major way; cannot read old encodings. See " ++ faultyReencodedFile ++ "."
+            let failureMessage =
+                  if testSamples == goldenSamples
+                    then "Encoding has changed in a minor way; still can read old encodings. See " ++ faultyReencodedFile ++ "."
+                    else "Encoding has changed in a major way; cannot read old encodings. See " ++ faultyReencodedFile ++ "."
             expectationFailure failureMessage
             finalResult
   where
@@ -160,17 +172,26 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
     writeComparisonFile newSamples = do
       writeFile faultyFile (encodePrettySortedKeys newSamples)
       putStrLn $
-        "\n" ++
-        "INFO: Written the current encodings into " ++ faultyFile ++ "."
+        "\n"
+          ++ "INFO: Written the current encodings into "
+          ++ faultyFile
+          ++ "."
     writeReencodedComparisonFile samples = do
       writeFile faultyReencodedFile (encodePrettySortedKeys samples)
       putStrLn $
-        "\n" ++
-        "INFO: Written the re-encodings into " ++ faultyReencodedFile ++ "."
+        "\n"
+          ++ "INFO: Written the re-encodings into "
+          ++ faultyReencodedFile
+          ++ "."
 
 -- | The golden files do not exist. Create them for each constructor.
-createGoldenFile :: forall a. (Serialize a, ToADTArbitrary a) =>
-  Int -> ConstructorArbitraryPair a -> FilePath -> IO ()
+createGoldenFile ::
+  forall a.
+  (Serialize a, ToADTArbitrary a) =>
+  Int ->
+  ConstructorArbitraryPair a ->
+  FilePath ->
+  IO ()
 createGoldenFile sampleSize cap goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO :: IO Int32
@@ -178,11 +199,15 @@ createGoldenFile sampleSize cap goldenFile = do
   writeFile goldenFile $ encodePrettySortedKeys rSamples
 
   putStrLn $
-    "\n" ++
-    "WARNING: Running for the first time, not testing anything.\n" ++
-    "  Created " ++ goldenFile ++ " containing random samples,\n" ++
-    "  will compare JSON encodings with this from now on.\n" ++
-    "  Please, consider putting " ++ goldenFile ++ " under version control."
+    "\n"
+      ++ "WARNING: Running for the first time, not testing anything.\n"
+      ++ "  Created "
+      ++ goldenFile
+      ++ " containing random samples,\n"
+      ++ "  will compare JSON encodings with this from now on.\n"
+      ++ "  Please, consider putting "
+      ++ goldenFile
+      ++ " under version control."
 
 -- | Create the file path for the golden file. Optionally use the module name to
 -- help avoid name collissions. Different modules can have types of the same
@@ -213,13 +238,19 @@ mkFaultyReencodedFilePath topDir mModuleName typeName cap =
 
 -- | Create a number of arbitrary instances of a particular constructor given
 -- a sample size and a random seed.
-mkRandomADTSamplesForConstructor :: forall a. (ToADTArbitrary a) =>
-  Int -> Proxy a -> String -> Int32 -> IO (RandomSamples a)
+mkRandomADTSamplesForConstructor ::
+  forall a.
+  (ToADTArbitrary a) =>
+  Int ->
+  Proxy a ->
+  String ->
+  Int32 ->
+  IO (RandomSamples a)
 mkRandomADTSamplesForConstructor sampleSize Proxy conName rSeed = do
   generatedADTs <- generate gen
-  let caps         = concat $ adtCAPs <$> generatedADTs
+  let caps = concat $ adtCAPs <$> generatedADTs
       filteredCAPs = filter (\x -> capConstructor x == conName) caps
-      arbs         = capArbitrary <$> filteredCAPs
+      arbs = capArbitrary <$> filteredCAPs
   return $ RandomSamples rSeed arbs
   where
     correctedSampleSize = if sampleSize <= 0 then 1 else sampleSize
@@ -230,7 +261,7 @@ mkGoldenFileForType :: forall a. (Serialize a, ToADTArbitrary a) => Int -> Proxy
 mkGoldenFileForType sampleSize Proxy goldenPath = do
   (typeName, constructors) <- fmap (adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
   mapM_
-    (\constructor -> do
+    ( \constructor -> do
         let goldenFile = goldenPath </> typeName </> capConstructor constructor <.> ".json"
         exists <- doesFileExist goldenFile
         if exists
@@ -240,5 +271,5 @@ mkGoldenFileForType sampleSize Proxy goldenPath = do
             rSeed <- randomIO :: IO Int32
             rSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor constructor) rSeed
             writeFile goldenFile $ encodePrettySortedKeys rSamples
-    ) constructors
-
+    )
+    constructors
