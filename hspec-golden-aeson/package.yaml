@@ -44,7 +44,6 @@ tests:
     source-dirs: test
     dependencies:
     - base
-    - aeson
     - cereal
     - directory
     - hspec

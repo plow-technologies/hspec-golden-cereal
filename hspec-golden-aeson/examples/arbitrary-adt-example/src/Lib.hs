@@ -8,8 +8,8 @@ where
 
 -- base
 
--- aeson
-import Data.Aeson (ToJSON)
+-- Cereal
+import Data.Serialize
 import GHC.Generics (Generic)
 -- QuickCheck
 import Test.QuickCheck (Arbitrary (..), oneof)
@@ -23,7 +23,7 @@ data Person = Person
   }
   deriving (Eq, Read, Show, Generic)
 
-instance ToJSON Person
+instance Serialize Person
 
 instance ToADTArbitrary Person
 
@@ -35,7 +35,7 @@ data OnOrOff
   | Off
   deriving (Eq, Read, Show, Generic)
 
-instance ToJSON OnOrOff
+instance Serialize OnOrOff
 
 instance ToADTArbitrary OnOrOff
 

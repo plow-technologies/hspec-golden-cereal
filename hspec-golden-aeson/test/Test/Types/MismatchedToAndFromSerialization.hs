@@ -3,7 +3,6 @@
 
 module Test.Types.MismatchedToAndFromSerialization where
 
-import Data.Aeson
 import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
@@ -16,17 +15,6 @@ data Person = Person
   deriving (Eq, Show, Generic)
 
 -- ToJSON and FromJSON use different strings, this should break.
-instance ToJSON Person where
-  toJSON (Person name' age') =
-    object
-      [ "personName" .= name',
-        "personAge" .= age'
-      ]
-
-instance FromJSON Person where
-  parseJSON = withObject "Expected a Person object" $ \o ->
-    Person <$> o .: "name"
-      <*> o .: "age"
 
 instance Serialize Person where
   put = \(Person _ newAge) -> putInthost newAge

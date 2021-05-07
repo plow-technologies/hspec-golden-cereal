@@ -3,7 +3,6 @@
 
 module Test.Types.BrokenSerialization where
 
-import Data.Aeson
 import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
