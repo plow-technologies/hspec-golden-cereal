@@ -15,10 +15,18 @@ data Person = Person
   deriving (Eq, Show, Generic)
 
 -- ToJSON and FromJSON use different strings, this should break.
+data WeirdPerson = WeirdPerson
+  {
+    personAge :: Int,
+    personName :: String
+  }  
+  deriving (Eq, Show, Generic)
+
+instance Serialize WeirdPerson
 
 instance Serialize Person where
-  put = \(Person _ newAge) -> putInthost newAge
-  get = pure (Person "name1" 1)
+  put = \(Person n a) -> put (WeirdPerson a n)
+
 
 instance ToADTArbitrary Person
 

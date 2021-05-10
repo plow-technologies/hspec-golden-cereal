@@ -45,6 +45,7 @@ tests:
     dependencies:
     - base
     - cereal
+    - bytestring
     - directory
     - hspec
     - hspec-core

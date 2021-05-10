@@ -51,7 +51,7 @@ module Test.Cereal.GenericSpecs
   -- * re-exports
   , Proxy(..)
   ) where
-    
+
 import Data.Proxy
 import qualified Data.Serialize as Cereal
 import Data.Typeable
@@ -140,3 +140,5 @@ instance Cereal.Serialize Person
 
 instance Arbitrary Person where
   arbitrary = genericArbitrary
+
+defaultSettings = genericDefaultSettings (Just "json")

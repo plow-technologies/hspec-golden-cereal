@@ -9,7 +9,7 @@ import Test.QuickCheck.Arbitrary.ADT
 
 data Person = Person
   { name :: String,
-    height :: Int
+    height :: Float
   }
   deriving (Eq, Show, Generic)
 

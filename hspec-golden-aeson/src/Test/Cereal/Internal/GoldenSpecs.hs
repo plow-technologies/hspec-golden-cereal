@@ -89,7 +89,7 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
       exists <- doesFileExist goldenFile
       putStrLn "does the file exist"
       let fixIfFlag err = do
-            doFix <- isJust <$> lookupEnv "RECREATE_BROKEN_GOLDEN"
+            doFix <- isJust <$> lookupEnv recreateBrokenGoldenEnv
             if doFix
               then createGoldenfile @s settings proxy goldenFile
               else throwIO err
@@ -100,7 +100,7 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
                         Handler (\(err :: DecodeError) -> fixIfFlag err)
                       ]
         else do
-          doCreate <- isJust <$> lookupEnv "CREATE_MISSING_GOLDEN"
+          doCreate <- isJust <$> lookupEnv createMissingGoldenEnv
           if doCreate
             then createGoldenfile @s settings proxy goldenFile
             else expectationFailure $ "Missing golden file: " <> goldenFile
@@ -117,7 +117,9 @@ compareWithGolden ::
   IO ()
 compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
   fileContent <- readFile goldenFile
+  putStrLn "before goldenSampleWithoutBody"
   goldenSampleWithoutBody :: (RandomSamples a) <- unlift @s <$> decodeIO fileContent
+  putStrLn "after goldenSampleWithoutBody"
   let goldenSeed = seed goldenSampleWithoutBody
   let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
   newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed

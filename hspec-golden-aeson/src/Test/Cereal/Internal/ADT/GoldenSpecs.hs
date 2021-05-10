@@ -87,7 +87,7 @@ testConstructor Settings {..} moduleName typeName cap =
   it ("produces the same JSON as is found in " ++ goldenFile) $ do
     exists <- doesFileExist goldenFile
     let fixIfFlag err = do
-          doFix <- isJust <$> lookupEnv "RECREATE_BROKEN_GOLDEN"
+          doFix <- isJust <$> lookupEnv recreateBrokenGoldenEnv
           if doFix
             then createGoldenFile sampleSize cap goldenFile
             else throwIO err
@@ -98,7 +98,7 @@ testConstructor Settings {..} moduleName typeName cap =
                       Handler (\(err :: AesonDecodeError) -> fixIfFlag err)
                     ]
       else do
-        doCreate <- isJust <$> lookupEnv "CREATE_MISSING_GOLDEN"
+        doCreate <- isJust <$> lookupEnv createMissingGoldenEnv
         if doCreate
           then createGoldenFile sampleSize cap goldenFile
           else expectationFailure $ "Missing golden file: " <> goldenFile

@@ -56,7 +56,9 @@ data Settings = Settings
     -- | Whether to create a separate comparison file or ovewrite the golden file.
     comparisonFile :: ComparisonFile,
     -- | Whether to output a warning or fail the test when the random seed produces different values than the values in the golden file.
-    randomMismatchOption :: RandomMismatchOption
+    randomMismatchOption :: RandomMismatchOption,
+     -- | Golden file output file type
+    fileType :: Maybe String
   }
 
 type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a))
@@ -72,8 +74,8 @@ class GoldenSerializer s where
 data GoldenDirectoryOption = CustomDirectoryName String | GoldenDirectory
 
 -- | The default settings for general use cases.
-defaultSettings :: Settings
-defaultSettings = Settings GoldenDirectory False 5 FaultyFile RandomMismatchWarning
+genericDefaultSettings :: Maybe String -> Settings
+genericDefaultSettings = Settings GoldenDirectory False 5 FaultyFile RandomMismatchWarning
 
 -- | put brackets around a String.
 addBrackets :: String -> String
@@ -178,3 +180,9 @@ mkTypeNameInfo
         case goldenDirectoryOption of
           GoldenDirectory -> "golden"
           CustomDirectoryName d -> d
+
+createMissingGoldenEnv :: String
+createMissingGoldenEnv = "CREATE_MISSING_GOLDEN"
+
+recreateBrokenGoldenEnv :: String
+recreateBrokenGoldenEnv = "RECREATE_BROKEN_GOLDEN"

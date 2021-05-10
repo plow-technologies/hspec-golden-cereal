@@ -13,20 +13,18 @@ data Person = Person
     age :: Int
   }
   deriving (Eq, Show, Generic)
-{-
-instance ToJSON Person where
-  toJSON (Person name' age') =
-    object
-      [ "personName" .= name',
-        "personAge" .= age'
-      ]
 
-instance FromJSON Person where
-  parseJSON = withObject "Expected a Person object" $ \o ->
-    Person <$> o .: "personName"
-      <*> o .: "personAge"-}
+data PersonWithoutAge = PersonWithoutAge
+  {
+    nameWithoutAge :: String
+  }
+  deriving (Eq, Show, Generic)
 
-instance Serialize Person
+instance Serialize PersonWithoutAge
+
+instance Serialize Person where
+  put = \(Person newName _) -> put (PersonWithoutAge newName)
+
 
 instance ToADTArbitrary Person
 
@@ -45,3 +43,6 @@ instance ToADTArbitrary SumType
 
 instance Arbitrary SumType where
   arbitrary = genericArbitrary
+
+data P2 = P2 String Int deriving (Eq, Show, Generic)
+instance Serialize P2
