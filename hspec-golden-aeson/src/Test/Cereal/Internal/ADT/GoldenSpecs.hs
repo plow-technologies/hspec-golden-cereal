@@ -124,15 +124,16 @@ compareWithGolden ::
   FilePath ->
   IO ()
 compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
-  goldenSeed <- readSeed =<< readFile goldenFile
-  sampleSize <- readSampleSize =<< readFile goldenFile
+  fileContent <- readFile goldenFile
+  goldenSampleWithoutBody :: (RandomSamples a) <- aesonDecodeIO fileContent
+  let goldenSeed = seed goldenSampleWithoutBody
+  let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
   newSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor cap) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
-    goldenBytes <- readFile goldenFile
-    goldenSamples :: RandomSamples a <- aesonDecodeIO goldenBytes
+    goldenSamples :: RandomSamples a <- aesonDecodeIO fileContent
     if newSamples == goldenSamples
       then -- random samples match; test encoding of samples (the above check only tested the decoding)
-        encodePrettySortedKeys newSamples == goldenBytes `shouldBe` True
+        encodeLazy newSamples == fileContent `shouldBe` True
       else do
         let -- whether to pass the test or fail due to random value mismatch
             finalResult =
@@ -148,8 +149,8 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
             ++ goldenFile
             ++ ".\n"
             ++ "  Testing round-trip decoding/encoding of golden file."
-        let reencodedGoldenSamples = encodePrettySortedKeys goldenSamples
-        if reencodedGoldenSamples == goldenBytes
+        let reencodedGoldenSamples = encodeLazy goldenSamples
+        if reencodedGoldenSamples == fileContent
           then -- pass the test because round-trip decode/encode still gives the same bytes
             finalResult
           else do
@@ -170,14 +171,14 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
     faultyReencodedFile = mkFaultyReencodedFilePath topDir mModuleName typeName cap
 
     writeComparisonFile newSamples = do
-      writeFile faultyFile (encodePrettySortedKeys newSamples)
+      writeFile faultyFile (encodeLazy newSamples)
       putStrLn $
         "\n"
           ++ "INFO: Written the current encodings into "
           ++ faultyFile
           ++ "."
     writeReencodedComparisonFile samples = do
-      writeFile faultyReencodedFile (encodePrettySortedKeys samples)
+      writeFile faultyReencodedFile (encodeLazy samples)
       putStrLn $
         "\n"
           ++ "INFO: Written the re-encodings into "
@@ -196,7 +197,7 @@ createGoldenFile sampleSize cap goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO :: IO Int32
   rSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor cap) rSeed
-  writeFile goldenFile $ encodePrettySortedKeys rSamples
+  writeFile goldenFile $ encodeLazy rSamples
 
   putStrLn $
     "\n"
@@ -270,6 +271,6 @@ mkGoldenFileForType sampleSize Proxy goldenPath = do
             createDirectoryIfMissing True (takeDirectory goldenFile)
             rSeed <- randomIO :: IO Int32
             rSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor constructor) rSeed
-            writeFile goldenFile $ encodePrettySortedKeys rSamples
+            writeFile goldenFile $ encodeLazy rSamples
     )
     constructors

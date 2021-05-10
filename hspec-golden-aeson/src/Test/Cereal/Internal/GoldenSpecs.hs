@@ -54,7 +54,9 @@ goldenSpecs ::
   Settings ->
   Proxy (s a) ->
   Spec
-goldenSpecs settings proxy = goldenSpecsWithNote settings proxy Nothing
+goldenSpecs settings proxy = do
+  runIO $ putStrLn "goldenSpecs"
+  goldenSpecsWithNote settings proxy Nothing
 
 -- | same as 'goldenSpecs' but has the option of passing a note to the
 -- 'describe' function.
@@ -81,10 +83,11 @@ goldenSpecsWithNotePlain ::
 goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {typeNameTypeName}) proxy mNote = do
   let goldenFile = mkGoldenFile typeNameInfo
       note = maybe "" (" " ++) mNote
-
+  runIO $ putStrLn "goldenSpecsWithNotePlain"
   describe ("JSON encoding of " ++ addBrackets (unTypeName typeNameTypeName) ++ note) $
     it ("produces the same JSON as is found in " ++ goldenFile) $ do
       exists <- doesFileExist goldenFile
+      putStrLn "does the file exist"
       let fixIfFlag err = do
             doFix <- isJust <$> lookupEnv "RECREATE_BROKEN_GOLDEN"
             if doFix
@@ -113,14 +116,16 @@ compareWithGolden ::
   ComparisonFile ->
   IO ()
 compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
+  putStrLn "Compare with golden"
   fileContent <- readFile goldenFile
-  goldenSampleWithoutBody <- unlift <$> readRandomSamplesHeader @s fileContent
+  putStrLn "Before randomSampleheader"
+  goldenSampleWithoutBody :: (RandomSamples a) <- unlift @s <$> decodeIO fileContent
+  putStrLn "After random sample header"
   let goldenSeed = seed goldenSampleWithoutBody
   let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
   newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
-    goldenBytes <- readFile goldenFile
-    goldenSamples :: s (RandomSamples a) <- decodeIO goldenBytes
+    goldenSamples :: s (RandomSamples a) <- decodeIO fileContent
     if encode newSamples == encode goldenSamples
       then return ()
       else do
@@ -131,7 +136,7 @@ compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
             ++ goldenFile
             ++ ".\n"
             ++ "  Testing round-trip decoding/encoding of golden file."
-        if encode goldenSamples == goldenBytes
+        if encode goldenSamples == fileContent
           then return ()
           else do
             writeReencodedComparisonFile goldenSamples
@@ -162,6 +167,7 @@ compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
 -- | The golden files do not exist. Create it.
 createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy (s a) -> FilePath -> IO ()
 createGoldenfile Settings {..} Proxy goldenFile = do
+  putStrLn "Create Golden File"
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO
   rSamples <- lift @s <$> mkRandomSamples sampleSize (Proxy :: Proxy a) rSeed

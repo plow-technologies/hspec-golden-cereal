@@ -40,14 +40,3 @@ data AesonDecodeError = AesonDecodeError String
 instance Exception AesonDecodeError
 
 instance Serialize a => Serialize (RandomSamples a)
-
-encodePrettySortedKeys :: Serialize a => a -> ByteString
-encodePrettySortedKeys = encodeLazy
-
--- | Reads the seed without looking at the samples.
-readSeed :: ByteString -> IO Int32
-readSeed = fmap seed . aesonDecodeIO @(RandomSamples ByteString)
-
--- | Read the sample size.
-readSampleSize :: ByteString -> IO Int
-readSampleSize = fmap (length . samples) . aesonDecodeIO @(RandomSamples ByteString)

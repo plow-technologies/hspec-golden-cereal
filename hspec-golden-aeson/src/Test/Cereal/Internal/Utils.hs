@@ -59,10 +59,9 @@ data Settings = Settings
     randomMismatchOption :: RandomMismatchOption
   }
 
-type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a), Ctx s (RandomSamples (UnparsedBody s)))
+type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a))
 
 class GoldenSerializer s where
-  type UnparsedBody s :: *
   type Ctx s :: * -> Constraint
   encode :: Ctx s a => s a -> ByteString
   decode :: Ctx s a => ByteString -> Either String (s a)
@@ -114,9 +113,6 @@ data RandomSamples a = RandomSamples
 -- | Apply the seed.
 setSeed :: Int -> Gen a -> Gen a
 setSeed rSeed (MkGen g) = MkGen $ \_randomSeed size -> g (mkQCGen rSeed) size
-
-readRandomSamplesHeader :: (GoldenSerializer s, Ctx s (RandomSamples (UnparsedBody s))) => ByteString -> IO (s (RandomSamples (UnparsedBody s)))
-readRandomSamplesHeader = decodeIO
 
 -- | run decode in IO, if it returns Left then throw an error.
 decodeIO :: forall s a. GoldenSerializerConstraints s a => ByteString -> IO (s (RandomSamples a))

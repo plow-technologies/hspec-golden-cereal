@@ -9,6 +9,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 
 -- |
 -- Module      : Test.Cereal.GenericSpecs
@@ -49,8 +51,7 @@ module Test.Cereal.GenericSpecs
   -- * re-exports
   , Proxy(..)
   ) where
-
-import Data.ByteString.Lazy (ByteString)
+    
 import Data.Proxy
 import qualified Data.Serialize as Cereal
 import Data.Typeable
@@ -63,6 +64,7 @@ import Test.Cereal.Internal.Utils
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
+import GHC.Generics
 
 roundtripSpecs :: forall a . (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
 roundtripSpecs Proxy = Roundtrip.roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
@@ -118,7 +120,6 @@ roundtripAndGoldenADTSpecsWithSettings settings proxy = do
 data GoldenCereal a = GoldenCereal a deriving (Show)
 
 instance GoldenSerializer GoldenCereal where
-  type UnparsedBody GoldenCereal = ByteString
   type Ctx GoldenCereal = Cereal.Serialize
   encode = Cereal.encodeLazy . unlift
   decode = fmap lift . Cereal.decodeLazy
@@ -127,3 +128,15 @@ instance GoldenSerializer GoldenCereal where
 
 instance Arbitrary a => Arbitrary (GoldenCereal a) where
   arbitrary = GoldenCereal <$> arbitrary
+
+
+data Person = Person
+  { name :: String,
+    age :: Int
+  }
+  deriving (Eq, Show, Generic)
+
+instance Cereal.Serialize Person
+
+instance Arbitrary Person where
+  arbitrary = genericArbitrary
