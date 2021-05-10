@@ -116,11 +116,8 @@ compareWithGolden ::
   ComparisonFile ->
   IO ()
 compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
-  putStrLn "Compare with golden"
   fileContent <- readFile goldenFile
-  putStrLn "Before randomSampleheader"
   goldenSampleWithoutBody :: (RandomSamples a) <- unlift @s <$> decodeIO fileContent
-  putStrLn "After random sample header"
   let goldenSeed = seed goldenSampleWithoutBody
   let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
   newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed
