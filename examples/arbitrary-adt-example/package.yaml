@@ -17,7 +17,7 @@ dependencies:
 - aeson
 - QuickCheck
 - quickcheck-arbitrary-adt
-- hspec-golden-aeson
+- hspec-golden-cereal
 
 
 library:

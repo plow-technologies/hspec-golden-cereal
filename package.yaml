@@ -1,4 +1,4 @@
-name: hspec-golden-aeson
+name: hspec-golden-cereal
 version: 0.1.0.0
 synopsis: Use tests to monitor changes in Cereal serialization
 description: Use tests to monitor changes in Cereal serialization
@@ -49,7 +49,7 @@ tests:
     - directory
     - hspec
     - hspec-core
-    - hspec-golden-aeson
+    - hspec-golden-cereal
     - silently
     - quickcheck-arbitrary-adt
     - QuickCheck

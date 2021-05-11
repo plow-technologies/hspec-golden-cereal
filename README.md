@@ -1,4 +1,4 @@
-# hspec-golden-aeson
+# hspec-golden-cereal
 
 ## Arbitrary
 
