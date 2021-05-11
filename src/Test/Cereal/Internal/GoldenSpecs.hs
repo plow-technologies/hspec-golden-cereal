@@ -117,7 +117,7 @@ compareWithGolden settings typeNameInfo Proxy goldenFile comparisonFile = do
   fileContent <- readFile goldenFile
   goldenSamples :: s (RandomSamples a) <- decodeIO fileContent
   let goldenSeed = seed (unlift goldenSamples)
-  let sampleSize = Prelude.length $ samples $ unlift $ goldenSamples
+  let sampleSize = Prelude.length $ samples $ unlift goldenSamples
   newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
     if encode newSamples == encode goldenSamples
@@ -213,7 +213,7 @@ mkRandomSamples ::
   Proxy a ->
   Int32 ->
   IO (RandomSamples a)
-mkRandomSamples sampleSize Proxy rSeed = (RandomSamples rSeed) <$> generate gen
+mkRandomSamples sampleSize Proxy rSeed = RandomSamples rSeed <$> generate gen
   where
     correctedSampleSize = if sampleSize <= 0 then 1 else sampleSize
     gen :: Gen [a]

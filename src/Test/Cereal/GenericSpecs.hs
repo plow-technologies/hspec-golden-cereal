@@ -2,14 +2,11 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 
 -- |
@@ -57,18 +54,29 @@ import qualified Data.Serialize as Cereal
 import Data.Typeable
 import Test.Cereal.Internal.ADT.GoldenSpecs (goldenADTSpecs, mkGoldenFileForType)
 import Test.Cereal.Internal.ADT.RoundtripSpecs (roundtripADTSpecs)
-import Test.Cereal.Internal.ADT.Utils()
 import qualified Test.Cereal.Internal.GoldenSpecs as Golden
 import qualified Test.Cereal.Internal.RoundtripSpecs as Roundtrip
 import Test.Cereal.Internal.Utils
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
-import GHC.Generics
 
 roundtripSpecs :: forall a . (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
 roundtripSpecs Proxy = Roundtrip.roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
 
+-- | Tests to ensure that the binary encoding has not unintentionally changed. This
+-- could be caused by the following:
+--
+-- - A type's instances of the serialisation have changed.
+-- - Selectors have been edited, added or deleted.
+-- - You have changed version of Cereal the way Cereal serialization has changed
+--   works.
+--
+-- If you run this function and the golden files do not
+-- exist, it will create them for each constructor. It they do exist, it will
+-- compare with golden file if it exists. Golden file encodes the serialized format of a
+-- type. It is recommended that you put the golden files under revision control
+-- to help monitor changes.
 goldenSpecs :: 
   forall a.
   (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) =>
@@ -103,8 +111,8 @@ roundtripAndGoldenADTSpecs ::
   (Arbitrary a, ToADTArbitrary a, Eq a, Show a, Cereal.Serialize a) =>
   Proxy a ->
   Spec
-roundtripAndGoldenADTSpecs proxy =
-  roundtripAndGoldenADTSpecsWithSettings defaultSettings proxy
+roundtripAndGoldenADTSpecs =
+  roundtripAndGoldenADTSpecsWithSettings defaultSettings
 
 -- | 'roundtripAndGoldenADTSpecs' with custom settings.
 roundtripAndGoldenADTSpecsWithSettings ::
@@ -117,7 +125,7 @@ roundtripAndGoldenADTSpecsWithSettings settings proxy = do
   roundtripADTSpecs proxy
   goldenADTSpecs settings proxy
 
-data GoldenCereal a = GoldenCereal a deriving (Show)
+newtype GoldenCereal a = GoldenCereal a deriving (Show)
 
 instance GoldenSerializer GoldenCereal where
   type Ctx GoldenCereal = Cereal.Serialize
@@ -129,17 +137,6 @@ instance GoldenSerializer GoldenCereal where
 instance Arbitrary a => Arbitrary (GoldenCereal a) where
   arbitrary = GoldenCereal <$> arbitrary
 
-
-data Person = Person
-  { name :: String,
-    age :: Int
-  }
-  deriving (Eq, Show, Generic)
-
-instance Cereal.Serialize Person
-
-instance Arbitrary Person where
-  arbitrary = genericArbitrary
 
 defaultSettings :: Settings
 defaultSettings = genericDefaultSettings "bin"

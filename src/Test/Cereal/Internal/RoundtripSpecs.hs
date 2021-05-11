@@ -45,8 +45,7 @@ genericCerealRoundtripWithNote ::
   Spec
 genericCerealRoundtripWithNote proxy mNote = do
   let typeIdentifier = show (typeRep (Proxy :: Proxy a))
-  result <- genericCerealRoundtripWithNotePlain proxy mNote typeIdentifier
-  return result
+  genericCerealRoundtripWithNotePlain proxy mNote typeIdentifier
 
 -- | Same as 'genericCerealRoundtripWithNote', but no need for Typeable, Eq, or Show
 genericCerealRoundtripWithNotePlain ::
@@ -59,7 +58,7 @@ genericCerealRoundtripWithNotePlain ::
 genericCerealRoundtripWithNotePlain _ mNote typeIdentifier = do
   let note = maybe "" (" " ++) mNote
 
-  describe ("Binary encoding of " ++ addBrackets (typeIdentifier) ++ note) $
+  describe ("Binary encoding of " ++ addBrackets typeIdentifier ++ note) $
     prop
       "allows to encode values with cereal and read them back"
       (checkEncodingEquality @s @a)

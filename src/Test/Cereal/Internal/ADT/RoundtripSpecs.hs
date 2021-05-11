@@ -47,7 +47,7 @@ genericCerealRoundtripADTWithNote ::
 genericCerealRoundtripADTWithNote _ mNote = do
   adt <- runIO $ generate (toADTArbitrary (Proxy :: Proxy a))
   describe ("Binary encoding of " ++ addBrackets (adtTypeName adt) ++ note) $
-    it "allows to encode values with aeson and read them back" $
+    it "allows to encode values with cereal and read them back" $
       traverse_ (serializeRoundtrip . capArbitrary) $ adtCAPs adt
   where
     note = maybe "" (" " ++) mNote

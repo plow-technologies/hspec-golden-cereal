@@ -28,6 +28,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Gen
 import Test.QuickCheck.Random
 import Prelude
+import qualified Data.Serialize as Cereal 
 
 -- | Option to indicate whether to create a separate comparison file or overwrite the golden file.
 -- A separate file allows you to use diff to compare.
@@ -101,7 +102,7 @@ checkEncodingEquality a =
   let byteStrA :: ByteString = encode a
       decodedVal :: Either String (s a) = decode byteStrA
       eitherByteStrB = encode <$> decodedVal
-   in (Right byteStrA) == eitherByteStrB
+   in Right byteStrA == eitherByteStrB
 
 -- | RandomSamples, using a seed allows you to replicate an arbitrary. By
 -- storing the seed and the samples (previously produced arbitraries), we can
@@ -111,6 +112,8 @@ data RandomSamples a = RandomSamples
     samples :: [a]
   }
   deriving (Eq, Ord, Show, Generic)
+
+instance Cereal.Serialize a => Cereal.Serialize (RandomSamples a)
 
 -- | Apply the seed.
 setSeed :: Int -> Gen a -> Gen a
@@ -122,7 +125,7 @@ decodeIO bs = case decode bs of
   Right a -> return a
   Left msg -> throwIO $ DecodeError msg
 
-data DecodeError = DecodeError String
+newtype DecodeError = DecodeError String
   deriving (Show, Eq)
 
 instance Exception DecodeError

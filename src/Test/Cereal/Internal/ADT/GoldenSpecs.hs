@@ -3,7 +3,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -20,7 +19,7 @@ module Test.Cereal.Internal.ADT.GoldenSpecs where
 import Control.Arrow
 import Control.Exception
 import Control.Monad
-import Data.ByteString.Lazy (readFile, writeFile)
+import Data.ByteString.Lazy (readFile, writeFile, ByteString)
 import Data.Int (Int32)
 import Data.Maybe (isJust)
 import Data.Proxy
@@ -29,7 +28,6 @@ import System.Directory
 import System.Environment (lookupEnv)
 import System.FilePath
 import System.Random
-import Test.Cereal.Internal.ADT.Utils
 import Test.Cereal.Internal.Utils
 import Test.HUnit.Lang (HUnitFailure)
 import Test.Hspec
@@ -107,9 +105,11 @@ testConstructor Settings {..} moduleName typeName cap =
     topDir = case goldenDirectoryOption of
       GoldenDirectory -> "golden"
       CustomDirectoryName d -> d
-    mModuleName = case useModuleNameAsSubDirectory of
-      True -> Just moduleName
-      False -> Nothing
+    mModuleName = 
+      if useModuleNameAsSubDirectory then
+        Just moduleName
+      else
+        Nothing
 
 -- | The golden files already exist. Serialize values with the same seed from
 -- the golden files of each constructor and compare.
@@ -127,7 +127,7 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
   fileContent <- readFile goldenFile
   goldenSampleWithoutBody :: (RandomSamples a) <- cerealDecodeIO fileContent
   let goldenSeed = seed goldenSampleWithoutBody
-  let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
+  let sampleSize = Prelude.length $ samples goldenSampleWithoutBody
   newSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor cap) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
     goldenSamples :: RandomSamples a <- cerealDecodeIO fileContent
@@ -274,3 +274,10 @@ mkGoldenFileForType sampleSize Proxy goldenPath = do
             writeFile goldenFile $ encodeLazy rSamples
     )
     constructors
+
+-- | run decode in IO, if it returns Left then throw an error.
+cerealDecodeIO :: Serialize a => ByteString -> IO a
+cerealDecodeIO bs = case decodeLazy bs of
+  Right a -> return a
+  Left msg -> throwIO $ DecodeError msg
+
