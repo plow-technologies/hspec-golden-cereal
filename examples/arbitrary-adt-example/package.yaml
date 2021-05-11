@@ -1,6 +1,6 @@
 name:                arbitrary-adt-example
 version:             0.1.0.0
-github:              plow-technologies/hspec-golden-aeson
+github:              plow-technologies/hspec-golden-cereal
 license:             BSD3
 author:              James M.C. Haver II
 maintainer:          bruno-cadorette@plowtech.net
@@ -9,12 +9,12 @@ copyright:           BSD3
 extra-source-files:
 - README.md
 - ChangeLog.md
-synopsis:            hspec-golden-aeson example
-description:         Please see the README on Github at <https://github.com/plow-technologies/hspec-golden-aeson#readme>
+synopsis:            hspec-golden-cereal example
+description:         Please see the README on Github at <https://github.com/plow-technologies/hspec-golden-cereal#readme>
 
 dependencies:
 - base >= 4.7 && < 5
-- aeson
+- cereal
 - QuickCheck
 - quickcheck-arbitrary-adt
 - hspec-golden-cereal

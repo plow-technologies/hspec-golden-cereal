@@ -28,8 +28,8 @@ This is very useful for sum types.
 import GHC.Generics (Generic)
 import Data.Proxy
 
--- aeson
-import Data.Aeson (ToJSON)
+-- Cereal
+import Data.Serialize
 
 -- QuickCheck
 import Test.QuickCheck (Arbitrary (..), oneof)
@@ -37,21 +37,17 @@ import Test.QuickCheck (Arbitrary (..), oneof)
 -- quickcheck-arbitrary-adt
 import Test.QuickCheck.Arbitrary.ADT (ToADTArbitrary)
 
--- hspec-golden-aeson
-import Test.Cereal.GenericSpecs (mkGoldenFileForType)
+data Person = Person
+  { name :: String,
+    address :: String,
+    age :: Int
+  }
+  deriving (Eq, Read, Show, Generic)
 
--- product type
-data Person =
-  Person
-    { name :: String
-    , address :: String
-    , age :: Int
-    } deriving (Eq,Read,Show,Generic)
+instance Serialize Person
 
-instance ToJSON Person
-
--- derive ToADTArbitrary generically
 instance ToADTArbitrary Person
+
 instance Arbitrary Person where
   arbitrary = Person <$> arbitrary <*> arbitrary <*> arbitrary
 
@@ -59,14 +55,15 @@ instance Arbitrary Person where
 data OnOrOff
   = On
   | Off
-  deriving (Eq,Read,Show,Generic)
+  deriving (Eq, Read, Show, Generic)
 
-instance ToJSON OnOrOff
+instance Serialize OnOrOff
 
--- derive ToADTArbitrary generically
 instance ToADTArbitrary OnOrOff
+
 instance Arbitrary OnOrOff where
   arbitrary = oneof [pure On, pure Off]
+
 
 
 main :: IO ()
