@@ -33,33 +33,33 @@ roundtripSpecs ::
   (Typeable a, Show (s a), Arbitrary (s a), GoldenSerializer s, Ctx s a) =>
   Proxy (s a) ->
   Spec
-roundtripSpecs proxy = genericAesonRoundtripWithNote proxy Nothing
+roundtripSpecs proxy = genericCerealRoundtripWithNote proxy Nothing
 
 -- | Same as 'roundtripSpecs', but optionally add notes to the 'describe'
 -- function.
-genericAesonRoundtripWithNote ::
+genericCerealRoundtripWithNote ::
   forall s a.
   (Typeable a, Show (s a), Arbitrary (s a), GoldenSerializer s, Ctx s a) =>
   Proxy (s a) ->
   Maybe String ->
   Spec
-genericAesonRoundtripWithNote proxy mNote = do
+genericCerealRoundtripWithNote proxy mNote = do
   let typeIdentifier = show (typeRep (Proxy :: Proxy a))
-  result <- genericAesonRoundtripWithNotePlain proxy mNote typeIdentifier
+  result <- genericCerealRoundtripWithNotePlain proxy mNote typeIdentifier
   return result
 
--- | Same as 'genericAesonRoundtripWithNote', but no need for Typeable, Eq, or Show
-genericAesonRoundtripWithNotePlain ::
+-- | Same as 'genericCerealRoundtripWithNote', but no need for Typeable, Eq, or Show
+genericCerealRoundtripWithNotePlain ::
   forall s a.
   (Show (s a), Arbitrary (s a), GoldenSerializer s, Ctx s a) =>
   Proxy (s a) ->
   Maybe String ->
   String ->
   Spec
-genericAesonRoundtripWithNotePlain _ mNote typeIdentifier = do
+genericCerealRoundtripWithNotePlain _ mNote typeIdentifier = do
   let note = maybe "" (" " ++) mNote
 
   describe ("Binary encoding of " ++ addBrackets (typeIdentifier) ++ note) $
     prop
-      "allows to encode values with aeson and read them back"
+      "allows to encode values with cereal and read them back"
       (checkEncodingEquality @s @a)

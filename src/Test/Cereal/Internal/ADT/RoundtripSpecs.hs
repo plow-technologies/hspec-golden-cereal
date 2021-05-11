@@ -34,17 +34,17 @@ roundtripADTSpecs ::
   (Arbitrary a, ToADTArbitrary a, Eq a, Show a, Serialize a) =>
   Proxy a ->
   Spec
-roundtripADTSpecs proxy = genericAesonRoundtripADTWithNote proxy Nothing
+roundtripADTSpecs proxy = genericCerealRoundtripADTWithNote proxy Nothing
 
 -- | Same as 'roundtripADTSpecs' but has the option of passing a note to the
 -- 'describe' function.
-genericAesonRoundtripADTWithNote ::
+genericCerealRoundtripADTWithNote ::
   forall a.
   (ToADTArbitrary a, Eq a, Show a, Arbitrary a, Serialize a) =>
   Proxy a ->
   Maybe String ->
   Spec
-genericAesonRoundtripADTWithNote _ mNote = do
+genericCerealRoundtripADTWithNote _ mNote = do
   adt <- runIO $ generate (toADTArbitrary (Proxy :: Proxy a))
   describe ("Binary encoding of " ++ addBrackets (adtTypeName adt) ++ note) $
     it "allows to encode values with aeson and read them back" $
