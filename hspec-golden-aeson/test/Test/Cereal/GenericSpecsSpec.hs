@@ -10,7 +10,6 @@ import System.Directory
 import Test.Cereal.GenericSpecs
 import Test.Cereal.Internal.Utils (RandomMismatchOption (..), RandomSamples(..), createMissingGoldenEnv, recreateBrokenGoldenEnv)
 import Test.Hspec
-import Test.Hspec.Core.Runner
 -- various iterations of a Product and Sum Type and their serializations
 import qualified Test.Types as T
 import qualified Test.Types.AlteredSelector as TAS
@@ -28,26 +27,21 @@ setCreateMissingGoldenEnv :: IO ()
 setCreateMissingGoldenEnv = 
   setEnv createMissingGoldenEnv "1"
 
--- summaryFailures
 spec :: Spec
 spec = before unsetAllEnv $ do
   describe "Test.Cereal.GenericSpecs: roundtripSpecs" $ do
-    it "should pass when ToJSON and FromJSON are defined appropriately" $ do
-      (s1, _) <- hspecSilently $ roundtripSpecs (Proxy :: Proxy T.Person)
-      summaryFailures s1 `shouldBe` 0
+    it "should pass when put and get are defined appropriately" $ do
+      shouldProduceFailures 0 $ roundtripSpecs (Proxy :: Proxy T.Person)
 
-    it "should fail when ToJSON and FromJSON definitions do not match" $ do
-      (s1, _) <- hspecSilently $ roundtripSpecs (Proxy :: Proxy MTFS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "should fail when put and get definitions do not match" $ do
+      shouldProduceFailures 1 $ roundtripSpecs (Proxy :: Proxy MTFS.Person)
 
   describe "Test.Cereal.GenericSpecs: roundtripADTSpecs" $ do
-    it "should pass when ToJSON and FromJSON are defined appropriately" $ do
-      (s1, _) <- hspecSilently $ roundtripADTSpecs (Proxy :: Proxy T.Person)
-      summaryFailures s1 `shouldBe` 0
+    it "should pass when put and get are defined appropriately" $ do
+      shouldProduceFailures 0 $ roundtripADTSpecs (Proxy :: Proxy T.Person)
 
-    it "should fail when ToJSON and FromJSON definitions do not match" $ do
-      (s1, _) <- hspecSilently $ roundtripADTSpecs (Proxy :: Proxy MTFS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "should fail when put and get definitions do not match" $ do
+      shouldProduceFailures 1 $ roundtripADTSpecs (Proxy :: Proxy MTFS.Person)
 
   describe "Test.Cereal.GenericSpecs: goldenSpecs" $ do
     it "create golden test files" $ do
@@ -101,22 +95,18 @@ spec = before unsetAllEnv $ do
 
     it "goldenADTSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
       setCreateMissingGoldenEnv
-      (s1, _) <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy T.Person)
-      (s2, _) <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy T.SumType)
-      (summaryFailures s1 + summaryFailures s2) `shouldBe` 0
+      shouldProduceFailures 0 $ do
+        goldenSpecs defaultSettings (Proxy :: Proxy T.Person)
+        goldenSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
-    it "goldenADTSpecs for types which have changed the values of ToJSON or FromJSON keys should fail to match the goldenFiles" $ do
-      setCreateMissingGoldenEnv
-      (s1, _) <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy TBS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $goldenSpecs defaultSettings (Proxy :: Proxy TBS.Person)
 
-    it "goldenADTSpecs for types which have changed the values of ToJSON or FromJSON keys should fail to match the goldenFiles" $ do
-      (s1, _) <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy TNS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TNS.Person)
 
-    it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of ToJSON and FromJSON should fail to match the goldenFiles" $ do
-      (s1, _) <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy TAS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TAS.Person)
 
   describe "Test.Cereal.GenericSpecs: goldenADTSpecs" $ do
     it "create golden test files" $ do
@@ -170,21 +160,18 @@ spec = before unsetAllEnv $ do
 
     it "goldenADTSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
       setCreateMissingGoldenEnv
-      (s1, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
-      (s2, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.SumType)
-      (summaryFailures s1 + summaryFailures s2) `shouldBe` 0
+      shouldProduceFailures 0 $ do
+        goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
+        goldenADTSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
-    it "goldenADTSpecs for types which have changed the values of ToJSON or FromJSON keys should fail to match the goldenFiles" $ do
-      (s1, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy TBS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TBS.Person)
 
-    it "goldenADTSpecs for types which have changed the values of ToJSON or FromJSON keys should fail to match the goldenFiles" $ do
-      (s1, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy TNS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TNS.Person)
 
-    it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of ToJSON and FromJSON should fail to match the goldenFiles" $ do
-      (s1, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy TAS.Person)
-      summaryFailures s1 `shouldBe` 1
+    it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TAS.Person)
 
     let goldenByteIdentical = encode $ RandomSamples 41 [T.Person "abc" 1, T.Person "def" 2]
 
@@ -199,8 +186,7 @@ spec = before unsetAllEnv $ do
       createDirectoryIfMissing True "golden/Person"
       BS.writeFile "golden/Person/Person.bin" goldenByteIdentical
 
-      (s1, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
-      summaryFailures s1 `shouldBe` 0
+      shouldProduceFailures 0 $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
 
     it "different random seed but byte-for-byte identical should fail (with custom setting)" $ do
       -- clean up previously existing golden folder
@@ -214,8 +200,7 @@ spec = before unsetAllEnv $ do
       BS.writeFile "golden/Person/Person.bin" goldenByteIdentical
 
       let customSettings = defaultSettings {randomMismatchOption = RandomMismatchError}
-      (s1, _) <- hspecSilently $ goldenADTSpecs customSettings (Proxy :: Proxy T.Person)
-      summaryFailures s1 `shouldBe` 1
+      shouldProduceFailures 1 $ goldenADTSpecs customSettings (Proxy :: Proxy T.Person)
 
   describe "mkGoldenFileForType" $ do
     it "create a single file in a dir for a Product type" $ do

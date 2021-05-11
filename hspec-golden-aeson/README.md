@@ -92,7 +92,7 @@ main = do
   goldenSpecs (defaultSettings { useModuleNameAsSubDirectory = True }) (Proxy :: Proxy OnOrOff)
   
   -- control the location of the golde files
-  let topDir = "json-tests"
+  let topDir = "bin-tests"
   goldenSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy Person)
   goldenSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy OnOrOff)
 

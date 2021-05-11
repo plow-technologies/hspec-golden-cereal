@@ -54,8 +54,7 @@ goldenSpecs ::
   Settings ->
   Proxy (s a) ->
   Spec
-goldenSpecs settings proxy = do
-  runIO $ putStrLn "goldenSpecs"
+goldenSpecs settings proxy = 
   goldenSpecsWithNote settings proxy Nothing
 
 -- | same as 'goldenSpecs' but has the option of passing a note to the
@@ -83,11 +82,9 @@ goldenSpecsWithNotePlain ::
 goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {typeNameTypeName}) proxy mNote = do
   let goldenFile = mkGoldenFile settings typeNameInfo
       note = maybe "" (" " ++) mNote
-  runIO $ putStrLn "goldenSpecsWithNotePlain"
   describe ("Encoding of " ++ addBrackets (unTypeName typeNameTypeName) ++ note) $
     it ("produces the same data as is found in " ++ goldenFile) $ do
       exists <- doesFileExist goldenFile
-      putStrLn "does the file exist"
       let fixIfFlag err = do
             doFix <- isJust <$> lookupEnv recreateBrokenGoldenEnv
             if doFix
@@ -118,14 +115,11 @@ compareWithGolden ::
   IO ()
 compareWithGolden settings typeNameInfo Proxy goldenFile comparisonFile = do
   fileContent <- readFile goldenFile
-  putStrLn "before goldenSampleWithoutBody"
-  goldenSampleWithoutBody :: (RandomSamples a) <- unlift @s <$> decodeIO fileContent
-  putStrLn "after goldenSampleWithoutBody"
-  let goldenSeed = seed goldenSampleWithoutBody
-  let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
+  goldenSamples :: s (RandomSamples a) <- decodeIO fileContent
+  let goldenSeed = seed (unlift goldenSamples)
+  let sampleSize = Prelude.length $ samples $ unlift $ goldenSamples
   newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
-    goldenSamples :: s (RandomSamples a) <- decodeIO fileContent
     if encode newSamples == encode goldenSamples
       then return ()
       else do
@@ -167,7 +161,6 @@ compareWithGolden settings typeNameInfo Proxy goldenFile comparisonFile = do
 -- | The golden files do not exist. Create it.
 createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy (s a) -> FilePath -> IO ()
 createGoldenfile Settings {..} Proxy goldenFile = do
-  putStrLn "Create Golden File"
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO
   rSamples <- lift @s <$> mkRandomSamples sampleSize (Proxy :: Proxy a) rSeed

@@ -47,7 +47,7 @@ import Prelude hiding (readFile, writeFile)
 --
 -- If you run this function and the golden files do not
 -- exist, it will create them for each constructor. It they do exist, it will
--- compare with golden file if it exists. Golden file encodes json format of a
+-- compare with golden file if it exists. Golden file encodes binary format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
 goldenADTSpecs ::

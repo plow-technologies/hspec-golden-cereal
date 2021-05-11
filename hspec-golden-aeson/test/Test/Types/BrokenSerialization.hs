@@ -24,6 +24,9 @@ instance Serialize PersonWithoutAge
 
 instance Serialize Person where
   put = \(Person newName _) -> put (PersonWithoutAge newName)
+  get = do
+    PersonWithoutAge n <- get
+    return $ Person n 0 
 
 
 instance ToADTArbitrary Person

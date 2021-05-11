@@ -20,6 +20,6 @@ cabal.sandbox.config
 .stack-work/
 cabal.project.local
 golden/
-json-tests/
+bin-tests/
 
 /TAGS

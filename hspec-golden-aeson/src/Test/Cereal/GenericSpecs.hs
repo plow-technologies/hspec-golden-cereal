@@ -141,4 +141,5 @@ instance Cereal.Serialize Person
 instance Arbitrary Person where
   arbitrary = genericArbitrary
 
+defaultSettings :: Settings
 defaultSettings = genericDefaultSettings "bin"

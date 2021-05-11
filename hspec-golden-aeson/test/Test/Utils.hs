@@ -24,8 +24,8 @@ shouldTestAs spec expected = do
         ++ "output of the test-suite:\n"
         ++ indent output
 
-shouldProduceFailures :: Spec -> Int -> IO ()
-shouldProduceFailures spec expected = do
+shouldProduceFailures :: Int -> Spec -> IO ()
+shouldProduceFailures expected spec = do
   (summary, output) <- hspecSilently spec
   when (summaryFailures summary /= expected) $
     expectationFailure $
