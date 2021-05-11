@@ -63,8 +63,8 @@ spec = before unsetAllEnv $ do
       _ <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
-      doesFileExist "golden/Person.json" `shouldReturn` True
-      doesFileExist "golden/SumType.json" `shouldReturn` True
+      doesFileExist "golden/Person.bin" `shouldReturn` True
+      doesFileExist "golden/SumType.bin" `shouldReturn` True
 
     it "create golden test files" $ do
       setCreateMissingGoldenEnv
@@ -79,12 +79,12 @@ spec = before unsetAllEnv $ do
       _ <- hspecSilently $ goldenSpecs (defaultSettings {useModuleNameAsSubDirectory = True}) (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenSpecs (defaultSettings {useModuleNameAsSubDirectory = True}) (Proxy :: Proxy T.SumType)
 
-      doesFileExist "golden/Test.Types/Person.json" `shouldReturn` True
-      doesFileExist "golden/Test.Types/SumType.json" `shouldReturn` True
+      doesFileExist "golden/Test.Types/Person.bin" `shouldReturn` True
+      doesFileExist "golden/Test.Types/SumType.bin" `shouldReturn` True
 
     it "create golden test files in a user defined directory" $ do
       setCreateMissingGoldenEnv
-      let topDir = "json-tests"
+      let topDir = "bin-tests"
       -- clean up previously existing user defined folder
       bg <- doesDirectoryExist topDir
       if bg
@@ -96,8 +96,8 @@ spec = before unsetAllEnv $ do
       _ <- hspecSilently $ goldenSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy T.SumType)
 
-      doesFileExist "json-tests/Person.json" `shouldReturn` True
-      doesFileExist "json-tests/SumType.json" `shouldReturn` True
+      doesFileExist "bin-tests/Person.bin" `shouldReturn` True
+      doesFileExist "bin-tests/SumType.bin" `shouldReturn` True
 
     it "goldenADTSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
       setCreateMissingGoldenEnv
@@ -132,10 +132,10 @@ spec = before unsetAllEnv $ do
       _ <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
-      doesFileExist "golden/Person/Person.json" `shouldReturn` True
-      doesFileExist "golden/SumType/SumType1.json" `shouldReturn` True
-      doesFileExist "golden/SumType/SumType2.json" `shouldReturn` True
-      doesFileExist "golden/SumType/SumType3.json" `shouldReturn` True
+      doesFileExist "golden/Person/Person.bin" `shouldReturn` True
+      doesFileExist "golden/SumType/SumType1.bin" `shouldReturn` True
+      doesFileExist "golden/SumType/SumType2.bin" `shouldReturn` True
+      doesFileExist "golden/SumType/SumType3.bin" `shouldReturn` True
 
     it "create golden test files in a sub directory using the module name" $ do
       setCreateMissingGoldenEnv
@@ -144,14 +144,14 @@ spec = before unsetAllEnv $ do
       _ <- hspecSilently $ goldenADTSpecs defaultSettings {useModuleNameAsSubDirectory = True} (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenADTSpecs defaultSettings {useModuleNameAsSubDirectory = True} (Proxy :: Proxy T.SumType)
 
-      doesFileExist "golden/Test.Types/Person/Person.json" `shouldReturn` True
-      doesFileExist "golden/Test.Types/SumType/SumType1.json" `shouldReturn` True
-      doesFileExist "golden/Test.Types/SumType/SumType2.json" `shouldReturn` True
-      doesFileExist "golden/Test.Types/SumType/SumType3.json" `shouldReturn` True
+      doesFileExist "golden/Test.Types/Person/Person.bin" `shouldReturn` True
+      doesFileExist "golden/Test.Types/SumType/SumType1.bin" `shouldReturn` True
+      doesFileExist "golden/Test.Types/SumType/SumType2.bin" `shouldReturn` True
+      doesFileExist "golden/Test.Types/SumType/SumType3.bin" `shouldReturn` True
 
     it "create golden test files in a user defined directory" $ do
       setCreateMissingGoldenEnv
-      let topDir = "json-tests"
+      let topDir = "bin-tests"
       -- clean up previously existing user defined folder
       bg <- doesDirectoryExist topDir
       if bg
@@ -163,10 +163,10 @@ spec = before unsetAllEnv $ do
       _ <- hspecSilently $ goldenADTSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenADTSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy T.SumType)
 
-      doesFileExist "json-tests/Person/Person.json" `shouldReturn` True
-      doesFileExist "json-tests/SumType/SumType1.json" `shouldReturn` True
-      doesFileExist "json-tests/SumType/SumType2.json" `shouldReturn` True
-      doesFileExist "json-tests/SumType/SumType3.json" `shouldReturn` True
+      doesFileExist "bin-tests/Person/Person.bin" `shouldReturn` True
+      doesFileExist "bin-tests/SumType/SumType1.bin" `shouldReturn` True
+      doesFileExist "bin-tests/SumType/SumType2.bin" `shouldReturn` True
+      doesFileExist "bin-tests/SumType/SumType3.bin" `shouldReturn` True
 
     it "goldenADTSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
       setCreateMissingGoldenEnv
@@ -197,7 +197,7 @@ spec = before unsetAllEnv $ do
 
       -- directly create golden file for tests
       createDirectoryIfMissing True "golden/Person"
-      BS.writeFile "golden/Person/Person.json" goldenByteIdentical
+      BS.writeFile "golden/Person/Person.bin" goldenByteIdentical
 
       (s1, _) <- hspecSilently $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
       summaryFailures s1 `shouldBe` 0
@@ -211,7 +211,7 @@ spec = before unsetAllEnv $ do
 
       -- directly create golden file for tests
       createDirectoryIfMissing True "golden/Person"
-      BS.writeFile "golden/Person/Person.json" goldenByteIdentical
+      BS.writeFile "golden/Person/Person.bin" goldenByteIdentical
 
       let customSettings = defaultSettings {randomMismatchOption = RandomMismatchError}
       (s1, _) <- hspecSilently $ goldenADTSpecs customSettings (Proxy :: Proxy T.Person)
@@ -226,7 +226,7 @@ spec = before unsetAllEnv $ do
         else pure ()
 
       mkGoldenFileForType 10 (Proxy :: Proxy T.Person) "golden"
-      doesFileExist "golden/Person/Person.json" `shouldReturn` True
+      doesFileExist "golden/Person/Person.bin" `shouldReturn` True
 
     it "create a file for each constructor in a dir for a Sum type" $ do
       -- clean up previously existing golden folder
@@ -236,9 +236,9 @@ spec = before unsetAllEnv $ do
         else pure ()
 
       mkGoldenFileForType 10 (Proxy :: Proxy T.SumType) "golden"
-      doesFileExist "golden/SumType/SumType1.json" `shouldReturn` True
-      doesFileExist "golden/SumType/SumType2.json" `shouldReturn` True
-      doesFileExist "golden/SumType/SumType3.json" `shouldReturn` True
+      doesFileExist "golden/SumType/SumType1.bin" `shouldReturn` True
+      doesFileExist "golden/SumType/SumType2.bin" `shouldReturn` True
+      doesFileExist "golden/SumType/SumType3.bin" `shouldReturn` True
 
 main :: IO ()
 main = 

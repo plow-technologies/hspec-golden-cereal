@@ -216,8 +216,8 @@ createGoldenFile sampleSize cap goldenFile = do
 mkGoldenFilePath :: forall a. FilePath -> Maybe FilePath -> FilePath -> ConstructorArbitraryPair a -> FilePath
 mkGoldenFilePath topDir mModuleName typeName cap =
   case mModuleName of
-    Nothing -> topDir </> typeName </> capConstructor cap <.> "json"
-    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "json"
+    Nothing -> topDir </> typeName </> capConstructor cap <.> "bin"
+    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "bin"
 
 -- | Create the file path to save results from a failed golden test. Optionally
 -- use the module name to help avoid name collisions.  Different modules can
@@ -225,8 +225,8 @@ mkGoldenFilePath topDir mModuleName typeName cap =
 mkFaultyFilePath :: forall a. FilePath -> Maybe FilePath -> FilePath -> ConstructorArbitraryPair a -> FilePath
 mkFaultyFilePath topDir mModuleName typeName cap =
   case mModuleName of
-    Nothing -> topDir </> typeName </> capConstructor cap <.> "faulty" <.> "json"
-    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "faulty" <.> "json"
+    Nothing -> topDir </> typeName </> capConstructor cap <.> "faulty" <.> "bin"
+    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "faulty" <.> "bin"
 
 -- | Create the file path to save results from a failed fallback golden test. Optionally
 -- use the module name to help avoid name collisions.  Different modules can
@@ -234,8 +234,8 @@ mkFaultyFilePath topDir mModuleName typeName cap =
 mkFaultyReencodedFilePath :: forall a. FilePath -> Maybe FilePath -> FilePath -> ConstructorArbitraryPair a -> FilePath
 mkFaultyReencodedFilePath topDir mModuleName typeName cap =
   case mModuleName of
-    Nothing -> topDir </> typeName </> capConstructor cap <.> "faulty" <.> "reencoded" <.> "json"
-    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "faulty" <.> "reencoded" <.> "json"
+    Nothing -> topDir </> typeName </> capConstructor cap <.> "faulty" <.> "reencoded" <.> "bin"
+    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "faulty" <.> "reencoded" <.> "bin"
 
 -- | Create a number of arbitrary instances of a particular constructor given
 -- a sample size and a random seed.
@@ -263,7 +263,7 @@ mkGoldenFileForType sampleSize Proxy goldenPath = do
   (typeName, constructors) <- fmap (adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
   mapM_
     ( \constructor -> do
-        let goldenFile = goldenPath </> typeName </> capConstructor constructor <.> ".json"
+        let goldenFile = goldenPath </> typeName </> capConstructor constructor <.> ".bin"
         exists <- doesFileExist goldenFile
         if exists
           then pure ()

@@ -141,4 +141,4 @@ instance Cereal.Serialize Person
 instance Arbitrary Person where
   arbitrary = genericArbitrary
 
-defaultSettings = genericDefaultSettings (Just "json")
+defaultSettings = genericDefaultSettings "bin"

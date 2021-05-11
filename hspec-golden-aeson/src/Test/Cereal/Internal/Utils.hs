@@ -58,7 +58,7 @@ data Settings = Settings
     -- | Whether to output a warning or fail the test when the random seed produces different values than the values in the golden file.
     randomMismatchOption :: RandomMismatchOption,
      -- | Golden file output file type
-    fileType :: Maybe String
+    fileType :: String
   }
 
 type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a))
@@ -74,7 +74,7 @@ class GoldenSerializer s where
 data GoldenDirectoryOption = CustomDirectoryName String | GoldenDirectory
 
 -- | The default settings for general use cases.
-genericDefaultSettings :: Maybe String -> Settings
+genericDefaultSettings :: String -> Settings
 genericDefaultSettings = Settings GoldenDirectory False 5 FaultyFile RandomMismatchWarning
 
 -- | put brackets around a String.

@@ -35,17 +35,17 @@ import Test.Hspec
 import Test.QuickCheck
 import Prelude hiding (readFile, writeFile)
 
--- | Tests to ensure that JSON encoding has not unintentionally changed. This
+-- | Tests to ensure that the encoding has not unintentionally changed. This
 -- could be caused by the following:
 --
--- - A type's instances of `ToJSON` or 'FromJSON' have changed.
+-- - A type's instances of the serialisation have changed.
 -- - Selectors have been edited, added or deleted.
 -- - You have changed version of Aeson the way Aeson serialization has changed
 --   works.
 --
 -- If you run this function and the golden files do not
 -- exist, it will create them for each constructor. It they do exist, it will
--- compare with golden file if it exists. Golden file encodes json format of a
+-- compare with golden file if it exists. Golden file encodes the serialized format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
 goldenSpecs ::
@@ -81,11 +81,11 @@ goldenSpecsWithNotePlain ::
   Maybe String ->
   Spec
 goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {typeNameTypeName}) proxy mNote = do
-  let goldenFile = mkGoldenFile typeNameInfo
+  let goldenFile = mkGoldenFile settings typeNameInfo
       note = maybe "" (" " ++) mNote
   runIO $ putStrLn "goldenSpecsWithNotePlain"
-  describe ("JSON encoding of " ++ addBrackets (unTypeName typeNameTypeName) ++ note) $
-    it ("produces the same JSON as is found in " ++ goldenFile) $ do
+  describe ("Encoding of " ++ addBrackets (unTypeName typeNameTypeName) ++ note) $
+    it ("produces the same data as is found in " ++ goldenFile) $ do
       exists <- doesFileExist goldenFile
       putStrLn "does the file exist"
       let fixIfFlag err = do
@@ -95,7 +95,7 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
               else throwIO err
       if exists
         then
-          compareWithGolden @s typeNameInfo proxy goldenFile comparisonFile
+          compareWithGolden @s settings typeNameInfo proxy goldenFile comparisonFile
             `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
                         Handler (\(err :: DecodeError) -> fixIfFlag err)
                       ]
@@ -106,16 +106,17 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
             else expectationFailure $ "Missing golden file: " <> goldenFile
 
 -- | The golden files already exist. Serialize values with the same seed from
--- the golden file and compare the with the JSON in the golden file.
+-- the golden file and compare the with the data in the golden file.
 compareWithGolden ::
   forall s a.
   (GoldenSerializerConstraints s a, Arbitrary a) =>
+  Settings ->
   TypeNameInfo a ->
   Proxy (s a) ->
   FilePath ->
   ComparisonFile ->
   IO ()
-compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
+compareWithGolden settings typeNameInfo Proxy goldenFile comparisonFile = do
   fileContent <- readFile goldenFile
   putStrLn "before goldenSampleWithoutBody"
   goldenSampleWithoutBody :: (RandomSamples a) <- unlift @s <$> decodeIO fileContent
@@ -145,9 +146,9 @@ compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
     whenFails = flip onException
     filePath =
       case comparisonFile of
-        FaultyFile -> mkFaultyFile typeNameInfo
+        FaultyFile -> mkFaultyFile settings typeNameInfo
         OverwriteGoldenFile -> goldenFile
-    faultyReencodedFilePath = mkFaultyReencodedFile typeNameInfo
+    faultyReencodedFilePath = mkFaultyReencodedFile settings typeNameInfo
     writeComparisonFile newSamples = do
       writeFile filePath (encode newSamples)
       putStrLn $
@@ -160,7 +161,7 @@ compareWithGolden typeNameInfo Proxy goldenFile comparisonFile = do
       putStrLn $
         "\n"
           ++ "INFO: Written the reencoded goldenFile into "
-          ++ faultyReencodedFilePath
+          ++ faultyReencodedFilePath 
           ++ "."
 
 -- | The golden files do not exist. Create it.
@@ -178,7 +179,7 @@ createGoldenfile Settings {..} Proxy goldenFile = do
       ++ "  Created "
       ++ goldenFile
       ++ " containing random samples,\n"
-      ++ "  will compare JSON encodings with this from now on.\n"
+      ++ "  will compare " ++ fileType ++ " encodings with this from now on.\n"
       ++ "  Please, consider putting "
       ++ goldenFile
       ++ " under version control."
@@ -186,29 +187,29 @@ createGoldenfile Settings {..} Proxy goldenFile = do
 -- | Create the file path for the golden file. Optionally use the module name to
 -- help avoid name collissions. Different modules can have types of the same
 -- name.
-mkGoldenFile :: TypeNameInfo a -> FilePath
-mkGoldenFile (TypeNameInfo {typeNameTopDir, typeNameModuleName, typeNameTypeName}) =
+mkGoldenFile :: Settings -> TypeNameInfo a -> FilePath
+mkGoldenFile Settings {..} (TypeNameInfo {typeNameTopDir, typeNameModuleName, typeNameTypeName}) =
   case typeNameModuleName of
-    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "json"
-    Just moduleName -> unTopDir typeNameTopDir </> unModuleName moduleName </> unTypeName typeNameTypeName <.> "json"
+    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> fileType
+    Just moduleName -> unTopDir typeNameTopDir </> unModuleName moduleName </> unTypeName typeNameTypeName <.> fileType
 
 -- | Create the file path to save results from a failed golden test. Optionally
 -- use the module name to help avoid name collisions.  Different modules can
 -- have types of the same name.
-mkFaultyFile :: TypeNameInfo a -> FilePath
-mkFaultyFile (TypeNameInfo {typeNameTypeName, typeNameModuleName, typeNameTopDir}) =
+mkFaultyFile :: Settings -> TypeNameInfo a -> FilePath
+mkFaultyFile Settings {..} (TypeNameInfo {typeNameTypeName, typeNameModuleName, typeNameTopDir}) =
   case unModuleName <$> typeNameModuleName of
-    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "faulty" <.> "json"
-    Just moduleName -> unTopDir typeNameTopDir </> moduleName </> unTypeName typeNameTypeName <.> "faulty" <.> "json"
+    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "faulty" <.> fileType
+    Just moduleName -> unTopDir typeNameTopDir </> moduleName </> unTypeName typeNameTypeName <.> "faulty" <.> fileType
 
 -- | Create the file path to save results from a failed fallback golden test. Optionally
 -- use the module name to help avoid name collisions.  Different modules can
 -- have types of the same name.
-mkFaultyReencodedFile :: TypeNameInfo a -> FilePath
-mkFaultyReencodedFile (TypeNameInfo {typeNameTypeName, typeNameModuleName, typeNameTopDir}) =
+mkFaultyReencodedFile :: Settings -> TypeNameInfo a -> FilePath
+mkFaultyReencodedFile Settings {..} (TypeNameInfo {typeNameTypeName, typeNameModuleName, typeNameTopDir}) =
   case unModuleName <$> typeNameModuleName of
-    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "faulty" <.> "reencoded" <.> "json"
-    Just moduleName -> unTopDir typeNameTopDir </> moduleName </> unTypeName typeNameTypeName <.> "faulty" <.> "reencoded" <.> "json"
+    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "faulty" <.> "reencoded" <.> fileType
+    Just moduleName -> unTopDir typeNameTopDir </> moduleName </> unTypeName typeNameTypeName <.> "faulty" <.> "reencoded" <.> fileType
 
 -- | Create a number of arbitrary instances of a type
 -- a sample size and a random seed.
