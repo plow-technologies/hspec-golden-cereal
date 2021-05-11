@@ -3,7 +3,7 @@ version:             0.1.0.0
 github:              plow-technologies/hspec-golden-aeson
 license:             BSD3
 author:              James M.C. Haver II
-maintainer:          mchaver@gmail.com
+maintainer:          bruno-cadorette@plowtech.net
 copyright:           BSD3
 
 extra-source-files:

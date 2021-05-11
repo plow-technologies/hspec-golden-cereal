@@ -10,9 +10,9 @@
 -- |
 -- Module      : Test.Cereal.Internal.GoldenSpecs
 -- Description : Golden tests for Arbitrary
--- Copyright   : (c) Plow Technologies, 2016
+-- Copyright   : (c) Plow Technologies, 2021
 -- License     : BSD3
--- Maintainer  : mchaver@gmail.com
+-- Maintainer  : bruno-cadorette@plowtech.net
 -- Stability   : Beta
 --
 -- Internal module, use at your own risk.
@@ -35,12 +35,12 @@ import Test.Hspec
 import Test.QuickCheck
 import Prelude hiding (readFile, writeFile)
 
--- | Tests to ensure that the encoding has not unintentionally changed. This
+-- | Tests to ensure that the binary encoding has not unintentionally changed. This
 -- could be caused by the following:
 --
 -- - A type's instances of the serialisation have changed.
 -- - Selectors have been edited, added or deleted.
--- - You have changed version of Aeson the way Aeson serialization has changed
+-- - You have changed version of Cereal the way Cereal serialization has changed
 --   works.
 --
 -- If you run this function and the golden files do not

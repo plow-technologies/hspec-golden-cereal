@@ -9,9 +9,9 @@
 -- |
 -- Module      : Test.Cereal.Internal.ADT.GoldenSpecs
 -- Description : Golden tests for ToADTArbitrary
--- Copyright   : (c) Plow Technologies, 2016
+-- Copyright   : (c) Plow Technologies, 2021
 -- License     : BSD3
--- Maintainer  : mchaver@gmail.com
+-- Maintainer  : bruno-cadorette@plowtech.net
 -- Stability   : Beta
 --
 -- Internal module, use at your own risk.
@@ -37,12 +37,12 @@ import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
 import Prelude hiding (readFile, writeFile)
 
--- | Tests to ensure that JSON encoding has not unintentionally changed. This
+-- | Tests to ensure that binary encoding has not unintentionally changed. This
 -- could be caused by the following:
 --
--- - A type's instances of `ToJSON` or 'FromJSON' have changed.
+-- - A type's instances of the serialisation have changed.
 -- - Selectors have been edited, added or deleted.
--- - You have changed version of Aeson the way Aeson serialization has changed
+-- - You have changed version of Cereal the way Cereal serialization has changed
 --   works.
 --
 -- If you run this function and the golden files do not
@@ -69,7 +69,7 @@ goldenADTSpecsWithNote ::
   Spec
 goldenADTSpecsWithNote settings Proxy mNote = do
   (moduleName, (typeName, constructors)) <- runIO $ fmap (adtModuleName &&& adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
-  describe ("JSON encoding of " ++ typeName ++ note) $
+  describe ("Binary encoding of " ++ typeName ++ note) $
     mapM_ (testConstructor settings moduleName typeName) constructors
   where
     note = maybe "" (" " ++) mNote
@@ -84,7 +84,7 @@ testConstructor ::
   ConstructorArbitraryPair a ->
   SpecWith (Arg (IO ()))
 testConstructor Settings {..} moduleName typeName cap =
-  it ("produces the same JSON as is found in " ++ goldenFile) $ do
+  it ("produces the same binary as is found in " ++ goldenFile) $ do
     exists <- doesFileExist goldenFile
     let fixIfFlag err = do
           doFix <- isJust <$> lookupEnv recreateBrokenGoldenEnv
@@ -95,7 +95,7 @@ testConstructor Settings {..} moduleName typeName cap =
       then
         compareWithGolden randomMismatchOption topDir mModuleName typeName cap goldenFile
           `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
-                      Handler (\(err :: AesonDecodeError) -> fixIfFlag err)
+                      Handler (\(err :: DecodeError) -> fixIfFlag err)
                     ]
       else do
         doCreate <- isJust <$> lookupEnv createMissingGoldenEnv
@@ -125,12 +125,12 @@ compareWithGolden ::
   IO ()
 compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
   fileContent <- readFile goldenFile
-  goldenSampleWithoutBody :: (RandomSamples a) <- aesonDecodeIO fileContent
+  goldenSampleWithoutBody :: (RandomSamples a) <- cerealDecodeIO fileContent
   let goldenSeed = seed goldenSampleWithoutBody
   let sampleSize = Prelude.length $ samples $ goldenSampleWithoutBody
   newSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor cap) goldenSeed
   whenFails (writeComparisonFile newSamples) $ do
-    goldenSamples :: RandomSamples a <- aesonDecodeIO fileContent
+    goldenSamples :: RandomSamples a <- cerealDecodeIO fileContent
     if newSamples == goldenSamples
       then -- random samples match; test encoding of samples (the above check only tested the decoding)
         encodeLazy newSamples == fileContent `shouldBe` True
@@ -156,7 +156,7 @@ compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
           else do
             -- how significant is the serialization change?
             writeReencodedComparisonFile goldenSamples
-            testSamples :: RandomSamples a <- aesonDecodeIO reencodedGoldenSamples
+            testSamples :: RandomSamples a <- cerealDecodeIO reencodedGoldenSamples
             let failureMessage =
                   if testSamples == goldenSamples
                     then "Encoding has changed in a minor way; still can read old encodings. See " ++ faultyReencodedFile ++ "."
@@ -205,7 +205,7 @@ createGoldenFile sampleSize cap goldenFile = do
       ++ "  Created "
       ++ goldenFile
       ++ " containing random samples,\n"
-      ++ "  will compare JSON encodings with this from now on.\n"
+      ++ "  will compare binary encodings with this from now on.\n"
       ++ "  Please, consider putting "
       ++ goldenFile
       ++ " under version control."

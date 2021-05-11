@@ -15,16 +15,16 @@
 -- |
 -- Module      : Test.Cereal.GenericSpecs
 -- Description : Export all necessary functions
--- Copyright   : (c) Plow Technologies, 2016
+-- Copyright   : (c) Plow Technologies, 2021
 -- License     : BSD3
--- Maintainer  : mchaver@gmail.com
+-- Maintainer  : bruno.cadorette@plowtech.net
 -- Stability   : Beta
 --
--- This package provides tools for testing Aeson serialization.
+-- This package provides tools for testing Cereal serialization.
 --
--- - Test that 'ToJSON' and 'FromJSON' instances are isomorphic.
--- - Alert you when unexpected changes in Aeson serialization occur.
--- - Record JSON formatting of Haskell types.
+-- - Test that the Data.Serialize instance is isomorphic.
+-- - Alert you when unexpected changes in Cereal serialization occur.
+-- - Record binary formatting of Haskell types.
 module Test.Cereal.GenericSpecs 
   (
     -- * Arbitrary testing

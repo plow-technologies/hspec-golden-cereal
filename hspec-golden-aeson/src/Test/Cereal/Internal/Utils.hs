@@ -10,9 +10,9 @@
 -- |
 -- Module      : Test.Cereal.Internal.Utils
 -- Description : Internal types, functions and values
--- Copyright   : (c) Plow Technologies, 2016
+-- Copyright   : (c) Plow Technologies, 2021
 -- License     : BSD3
--- Maintainer  : mchaver@gmail.com
+-- Maintainer  : bruno-cadorette@plowtech.net
 -- Stability   : Beta
 module Test.Cereal.Internal.Utils where
 
@@ -30,7 +30,7 @@ import Test.QuickCheck.Random
 import Prelude
 
 -- | Option to indicate whether to create a separate comparison file or overwrite the golden file.
--- A separate file allows you to use `diff` to compare.
+-- A separate file allows you to use diff to compare.
 -- Overwriting allows you to use source control tools for comparison.
 data ComparisonFile
   = -- | Create a new faulty file when tests fail
@@ -95,7 +95,7 @@ shouldBeIdentity ::
 shouldBeIdentity Proxy func =
   property $ \(a :: a) -> func a `shouldReturn` a
 
--- | This function will compare one JSON encoding to a subsequent JSON encoding, thus eliminating the need for an Eq instance
+-- | This function will compare one binary encoding to a subsequent binary encoding, thus eliminating the need for an Eq instance
 checkEncodingEquality :: forall s a. (Ctx s a, GoldenSerializer s) => s a -> Bool
 checkEncodingEquality a =
   let byteStrA :: ByteString = encode a

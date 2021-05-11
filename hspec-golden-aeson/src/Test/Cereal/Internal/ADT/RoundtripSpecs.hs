@@ -3,9 +3,9 @@
 -- |
 -- Module      : Test.Cereal.Internal.ADT.RoundtripSpecs
 -- Description : Roundtrip tests for ToADTArbitrary
--- Copyright   : (c) Plow Technologies, 2016
+-- Copyright   : (c) Plow Technologies, 2021
 -- License     : BSD3
--- Maintainer  : mchaver@gmail.com
+-- Maintainer  : bruno-cadorette@plowtech.net
 -- Stability   : Beta
 --
 -- Internal module, use at your own risk.
@@ -20,13 +20,13 @@ import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
 
 -- | A roundtrip test to check whether values of all of constructors of the
--- given type can be successfully converted to JSON and back to a Haskell value.
+-- given type can be successfully converted to binary and back to a Haskell value.
 --
 -- 'roundtripADTSpecs' will
 --
 -- - create random values for each constructor using 'ToADTArbitrary',
--- - convert them into JSON using 'ToJSON',
--- - read them back into Haskell using 'FromJSON' and
+-- - convert them into binary using 'Data.Serialize.get',
+-- - read them back into Haskell using 'Data.Serialize.put' and
 -- - make sure that the result is the same as the value it started with
 --   using 'Eq'.
 roundtripADTSpecs ::
@@ -46,7 +46,7 @@ genericAesonRoundtripADTWithNote ::
   Spec
 genericAesonRoundtripADTWithNote _ mNote = do
   adt <- runIO $ generate (toADTArbitrary (Proxy :: Proxy a))
-  describe ("JSON encoding of " ++ addBrackets (adtTypeName adt) ++ note) $
+  describe ("Binary encoding of " ++ addBrackets (adtTypeName adt) ++ note) $
     it "allows to encode values with aeson and read them back" $
       traverse_ (serializeRoundtrip . capArbitrary) $ adtCAPs adt
   where

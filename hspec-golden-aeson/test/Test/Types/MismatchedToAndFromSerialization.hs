@@ -14,7 +14,6 @@ data Person = Person
   }
   deriving (Eq, Show, Generic)
 
--- ToJSON and FromJSON use different strings, this should break.
 data WeirdPerson = WeirdPerson
   {
     personAge :: Int,

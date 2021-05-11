@@ -4,9 +4,9 @@
 -- |
 -- Module      : Test.Cereal.Internal.RoundtripSpecs
 -- Description : Roundtrip tests for Arbitrary
--- Copyright   : (c) Plow Technologies, 2016
+-- Copyright   : (c) Plow Technologies, 2021
 -- License     : BSD3
--- Maintainer  : mchaver@gmail.com
+-- Maintainer  : bruno.cadorette@plowtech.net
 -- Stability   : Beta
 --
 -- Internal module, use at your own risk.
@@ -19,13 +19,13 @@ import Test.Hspec.QuickCheck
 import Test.QuickCheck
 
 -- | A roundtrip test to check whether values of the given type
--- can be successfully converted to JSON and back to a Haskell value.
+-- can be successfully converted to binary and back to a Haskell value.
 --
 -- 'roundtripSpecs' will
 --
 -- - create random values (using 'Arbitrary'),
--- - convert them into JSON (using 'ToJSON'),
--- - read them back into Haskell (using 'FromJSON') and
+-- - convert them into binary (using 'Data.Serialize.put'),
+-- - read them back into Haskell (using 'Data.Serialize.get') and
 -- - make sure that the result is the same as the value it started with
 --   (using 'Eq').
 roundtripSpecs ::
@@ -59,7 +59,7 @@ genericAesonRoundtripWithNotePlain ::
 genericAesonRoundtripWithNotePlain _ mNote typeIdentifier = do
   let note = maybe "" (" " ++) mNote
 
-  describe ("JSON encoding of " ++ addBrackets (typeIdentifier) ++ note) $
+  describe ("Binary encoding of " ++ addBrackets (typeIdentifier) ++ note) $
     prop
       "allows to encode values with aeson and read them back"
       (checkEncodingEquality @s @a)
