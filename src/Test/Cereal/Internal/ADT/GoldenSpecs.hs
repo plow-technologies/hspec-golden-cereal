@@ -65,12 +65,15 @@ goldenADTSpecsWithNote ::
   Proxy a ->
   Maybe String ->
   Spec
-goldenADTSpecsWithNote settings Proxy mNote = do
-  (moduleName, (typeName, constructors)) <- runIO $ fmap (adtModuleName &&& adtTypeName &&& adtCAPs) <$> generate $ toADTArbitrary (Proxy :: Proxy a)
+goldenADTSpecsWithNote settings proxy mNote = do
+  (moduleName, typeName, constructors) <- runIO $ generateInfoFromADT proxy
   describe ("Binary encoding of " ++ typeName ++ note) $
     mapM_ (testConstructor settings moduleName typeName) constructors
   where
     note = maybe "" (" " ++) mNote
+
+generateInfoFromADT :: ToADTArbitrary a => Proxy a -> IO (String, String, [ConstructorArbitraryPair a])
+generateInfoFromADT proxy = fmap (\x -> (adtModuleName x, adtTypeName x, adtCAPs x)) <$> generate $ toADTArbitrary proxy
 
 -- | test a single set of values from a constructor for a given type.
 testConstructor ::

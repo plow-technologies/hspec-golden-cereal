@@ -225,6 +225,61 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/SumType/SumType2.bin" `shouldReturn` True
       doesFileExist "golden/SumType/SumType3.bin" `shouldReturn` True
 
+  describe "roundtripFromFile" $ do
+    it "create golden test files" $ do
+      setCreateMissingGoldenEnv
+      -- clean up previously existing golden folder
+      bg <- doesDirectoryExist "golden"
+      if bg
+        then removeDirectoryRecursive "golden"
+        else return ()
+
+      -- files for Person and SumType do not exist
+      -- create them by running goldenADTSpecs
+      _ <- hspecSilently $ roundtripFromFile (Proxy :: Proxy T.Person)
+
+      doesFileExist "golden/Person.bin" `shouldReturn` True
+
+    it "Should pass if serialization is OK" $ do
+      shouldProduceFailures 0 $ roundtripFromFile (Proxy :: Proxy T.Person)
+
+    it "roundtripFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ roundtripFromFile (Proxy :: Proxy TBS.Person)
+
+    it "roundtripFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ roundtripFromFile (Proxy :: Proxy TNS.Person)
+
+    it "roundtripFromFile for types which have altered the name of the selector and using generic implementation of get and put should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ roundtripFromFile (Proxy :: Proxy TAS.Person)
+
+  describe "roundtripADTFromFile" $ do
+    it "create golden test files" $ do
+      setCreateMissingGoldenEnv
+      -- clean up previously existing golden folder
+      bg <- doesDirectoryExist "golden"
+      if bg
+        then removeDirectoryRecursive "golden"
+        else return ()
+
+      -- files for Person and SumType do not exist
+      -- create them by running goldenADTSpecs
+      _ <- hspecSilently $ roundtripADTFromFile (Proxy :: Proxy T.Person)
+
+      doesFileExist "golden/Person/Person.bin" `shouldReturn` True
+
+    it "Should pass if serialization is OK" $ do
+      shouldProduceFailures 0 $ roundtripADTFromFile (Proxy :: Proxy T.Person)
+
+    it "roundtripADTFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ roundtripADTFromFile (Proxy :: Proxy TBS.Person)
+
+    it "roundtripADTFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ roundtripADTFromFile (Proxy :: Proxy TNS.Person)
+
+    it "roundtripADTFromFile for types which have altered the name of the selector and using generic implementation of get and put should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ roundtripADTFromFile (Proxy :: Proxy TAS.Person)
+
+
 main :: IO ()
 main = 
   hspec spec
