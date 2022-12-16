@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.3.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           hspec-golden-cereal
-version:        0.1.0.0
+version:        0.2.0.0
 synopsis:       Use tests to monitor changes in Cereal serialization
 description:    Use tests to monitor changes in Cereal serialization
 category:       Testing
@@ -34,6 +34,8 @@ library
       Test.Cereal.Internal.RoundtripSpecs
       Test.Cereal.Internal.Utils
   other-modules:
+      Test.Cereal.Internal.ADT.RoundtripFromFile
+      Test.Cereal.Internal.RoundtripFromFile
       Paths_hspec_golden_cereal
   hs-source-dirs:
       src
