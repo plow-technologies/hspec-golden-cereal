@@ -19,7 +19,7 @@ module Test.Cereal.Internal.ADT.GoldenSpecs where
 import Control.Arrow
 import Control.Exception
 import Control.Monad
-import Data.ByteString.Lazy (readFile, writeFile, ByteString)
+import qualified Data.ByteString.Lazy as LBS (readFile, writeFile)
 import Data.Int (Int32)
 import Data.Maybe (isJust)
 import Data.Proxy
@@ -94,7 +94,7 @@ testConstructor Settings {..} moduleName typeName cap =
             else throwIO err
     if exists
       then
-        compareWithGolden randomMismatchOption topDir mModuleName typeName cap goldenFile
+        compareWithGolden topDir mModuleName typeName cap goldenFile
           `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
                       Handler (\(err :: DecodeError) -> fixIfFlag err)
                     ]
@@ -108,85 +108,29 @@ testConstructor Settings {..} moduleName typeName cap =
     topDir = case goldenDirectoryOption of
       GoldenDirectory -> "golden"
       CustomDirectoryName d -> d
-    mModuleName = 
-      if useModuleNameAsSubDirectory then
-        Just moduleName
-      else
-        Nothing
+    mModuleName =
+      if useModuleNameAsSubDirectory
+        then Just moduleName
+        else Nothing
 
--- | The golden files already exist. Serialize values with the same seed from
--- the golden files of each constructor and compare.
+-- | PRE-condition: Golden file already exist.
+--   Try to decode golden file and encode it (without including the seed) with the current encoder.
+--   then compare both encoded representations.
 compareWithGolden ::
   forall a.
   (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
-  RandomMismatchOption ->
   String ->
   Maybe String ->
   String ->
   ConstructorArbitraryPair a ->
   FilePath ->
   IO ()
-compareWithGolden randomOption topDir mModuleName typeName cap goldenFile = do
-  fileContent <- readFile goldenFile
-  goldenSampleWithoutBody :: (RandomSamples a) <- cerealDecodeIO fileContent
-  let goldenSeed = seed goldenSampleWithoutBody
-  let sampleSize = Prelude.length $ samples goldenSampleWithoutBody
-  newSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor cap) goldenSeed
-  whenFails (writeComparisonFile newSamples) $ do
-    goldenSamples :: RandomSamples a <- cerealDecodeIO fileContent
-    if newSamples == goldenSamples
-      then -- random samples match; test encoding of samples (the above check only tested the decoding)
-        encodeLazy newSamples == fileContent `shouldBe` True
-      else do
-        let -- whether to pass the test or fail due to random value mismatch
-            finalResult =
-              case randomOption of
-                RandomMismatchWarning -> return ()
-                RandomMismatchError -> expectationFailure "New random samples generated from seed in golden file do not match samples in golden file."
-
-        -- do a fallback test to determine whether the mismatch is due to a random sample change only,
-        -- or due to a change in encoding
-        putStrLn $
-          "\n"
-            ++ "WARNING: New random samples do not match those in "
-            ++ goldenFile
-            ++ ".\n"
-            ++ "  Testing round-trip decoding/encoding of golden file."
-        let reencodedGoldenSamples = encodeLazy goldenSamples
-        if reencodedGoldenSamples == fileContent
-          then -- pass the test because round-trip decode/encode still gives the same bytes
-            finalResult
-          else do
-            -- how significant is the serialization change?
-            writeReencodedComparisonFile goldenSamples
-            testSamples :: RandomSamples a <- cerealDecodeIO reencodedGoldenSamples
-            let failureMessage =
-                  if testSamples == goldenSamples
-                    then "Encoding has changed in a minor way; still can read old encodings. See " ++ faultyReencodedFile ++ "."
-                    else "Encoding has changed in a major way; cannot read old encodings. See " ++ faultyReencodedFile ++ "."
-            expectationFailure failureMessage
-            finalResult
-  where
-    whenFails :: forall b c. IO c -> IO b -> IO b
-    whenFails = flip onException
-
-    faultyFile = mkFaultyFilePath topDir mModuleName typeName cap
-    faultyReencodedFile = mkFaultyReencodedFilePath topDir mModuleName typeName cap
-
-    writeComparisonFile newSamples = do
-      writeFile faultyFile (encodeLazy newSamples)
-      putStrLn $
-        "\n"
-          ++ "INFO: Written the current encodings into "
-          ++ faultyFile
-          ++ "."
-    writeReencodedComparisonFile samples = do
-      writeFile faultyReencodedFile (encodeLazy samples)
-      putStrLn $
-        "\n"
-          ++ "INFO: Written the re-encodings into "
-          ++ faultyReencodedFile
-          ++ "."
+compareWithGolden _topDir _mModuleName _typeName _cap goldenFile = do
+  bytes <- LBS.readFile goldenFile
+  case decodeLazy bytes of
+    Right (randomSamples :: RandomSamples a) ->
+      encodeLazy randomSamples `shouldBe` bytes
+    Left err -> expectationFailure err
 
 -- | The golden files do not exist. Create them for each constructor.
 createGoldenFile ::
@@ -200,7 +144,7 @@ createGoldenFile sampleSize cap goldenFile = do
   createDirectoryIfMissing True (takeDirectory goldenFile)
   rSeed <- randomIO :: IO Int32
   rSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor cap) rSeed
-  writeFile goldenFile $ encodeLazy rSamples
+  LBS.writeFile goldenFile $ encodeLazy rSamples
 
   putStrLn $
     "\n"
@@ -221,24 +165,6 @@ mkGoldenFilePath topDir mModuleName typeName cap =
   case mModuleName of
     Nothing -> topDir </> typeName </> capConstructor cap <.> "bin"
     Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "bin"
-
--- | Create the file path to save results from a failed golden test. Optionally
--- use the module name to help avoid name collisions.  Different modules can
--- have types of the same name.
-mkFaultyFilePath :: forall a. FilePath -> Maybe FilePath -> FilePath -> ConstructorArbitraryPair a -> FilePath
-mkFaultyFilePath topDir mModuleName typeName cap =
-  case mModuleName of
-    Nothing -> topDir </> typeName </> capConstructor cap <.> "faulty" <.> "bin"
-    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "faulty" <.> "bin"
-
--- | Create the file path to save results from a failed fallback golden test. Optionally
--- use the module name to help avoid name collisions.  Different modules can
--- have types of the same name.
-mkFaultyReencodedFilePath :: forall a. FilePath -> Maybe FilePath -> FilePath -> ConstructorArbitraryPair a -> FilePath
-mkFaultyReencodedFilePath topDir mModuleName typeName cap =
-  case mModuleName of
-    Nothing -> topDir </> typeName </> capConstructor cap <.> "faulty" <.> "reencoded" <.> "bin"
-    Just moduleName -> topDir </> moduleName </> typeName </> capConstructor cap <.> "faulty" <.> "reencoded" <.> "bin"
 
 -- | Create a number of arbitrary instances of a particular constructor given
 -- a sample size and a random seed.
@@ -274,13 +200,6 @@ mkGoldenFileForType sampleSize Proxy goldenPath = do
             createDirectoryIfMissing True (takeDirectory goldenFile)
             rSeed <- randomIO :: IO Int32
             rSamples <- mkRandomADTSamplesForConstructor sampleSize (Proxy :: Proxy a) (capConstructor constructor) rSeed
-            writeFile goldenFile $ encodeLazy rSamples
+            LBS.writeFile goldenFile $ encodeLazy rSamples
     )
     constructors
-
--- | run decode in IO, if it returns Left then throw an error.
-cerealDecodeIO :: Serialize a => ByteString -> IO a
-cerealDecodeIO bs = case decodeLazy bs of
-  Right a -> return a
-  Left msg -> throwIO $ DecodeError msg
-

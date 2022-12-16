@@ -24,6 +24,7 @@ import Data.ByteString.Lazy hiding (putStrLn)
 import Data.Int (Int32)
 import Data.Maybe (isJust)
 import Data.Proxy
+import Data.Serialize (Serialize, decodeLazy, encodeLazy)
 import Data.Typeable
 import System.Directory
 import System.Environment (lookupEnv)
@@ -50,18 +51,18 @@ import Prelude hiding (readFile, writeFile)
 -- to help monitor changes.
 goldenSpecs ::
   forall s a.
-  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a) =>
+  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Serialize a) =>
   Settings ->
   Proxy (s a) ->
   Spec
-goldenSpecs settings proxy = 
+goldenSpecs settings proxy =
   goldenSpecsWithNote settings proxy Nothing
 
 -- | same as 'goldenSpecs' but has the option of passing a note to the
 -- 'describe' function.
 goldenSpecsWithNote ::
   forall s a.
-  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a) =>
+  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Serialize a) =>
   Settings ->
   Proxy (s a) ->
   Maybe String ->
@@ -73,7 +74,7 @@ goldenSpecsWithNote settings proxy mNote = do
 -- | same as 'goldenSpecsWithNote' but does not require a Typeable, Eq or Show instance.
 goldenSpecsWithNotePlain ::
   forall s a.
-  (GoldenSerializerConstraints s a, Arbitrary a) =>
+  (GoldenSerializerConstraints s a, Arbitrary a, Serialize a) =>
   Settings ->
   TypeNameInfo a ->
   Proxy (s a) ->
@@ -106,57 +107,19 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
 -- the golden file and compare the with the data in the golden file.
 compareWithGolden ::
   forall s a.
-  (GoldenSerializerConstraints s a, Arbitrary a) =>
+  (GoldenSerializerConstraints s a, Arbitrary a, Serialize a) =>
   Settings ->
   TypeNameInfo a ->
   Proxy (s a) ->
   FilePath ->
   ComparisonFile ->
   IO ()
-compareWithGolden settings typeNameInfo Proxy goldenFile comparisonFile = do
-  fileContent <- readFile goldenFile
-  goldenSamples :: s (RandomSamples a) <- decodeIO fileContent
-  let goldenSeed = seed (unlift goldenSamples)
-  let sampleSize = Prelude.length $ samples $ unlift goldenSamples
-  newSamples :: s (RandomSamples a) <- lift <$> mkRandomSamples sampleSize (Proxy :: Proxy a) goldenSeed
-  whenFails (writeComparisonFile newSamples) $ do
-    if encode newSamples == encode goldenSamples
-      then return ()
-      else do
-        -- fallback to testing roundtrip decoding/encoding of golden file
-        putStrLn $
-          "\n"
-            ++ "WARNING: Encoding new random samples do not match "
-            ++ goldenFile
-            ++ ".\n"
-            ++ "  Testing round-trip decoding/encoding of golden file."
-        if encode goldenSamples == fileContent
-          then return ()
-          else do
-            writeReencodedComparisonFile goldenSamples
-            expectationFailure $ "Serialization has changed. Compare golden file with " ++ faultyReencodedFilePath ++ "."
-  where
-    whenFails :: forall b c. IO c -> IO b -> IO b
-    whenFails = flip onException
-    filePath =
-      case comparisonFile of
-        FaultyFile -> mkFaultyFile settings typeNameInfo
-        OverwriteGoldenFile -> goldenFile
-    faultyReencodedFilePath = mkFaultyReencodedFile settings typeNameInfo
-    writeComparisonFile newSamples = do
-      writeFile filePath (encode newSamples)
-      putStrLn $
-        "\n"
-          ++ "INFO: Written the current encodings into "
-          ++ filePath
-          ++ "."
-    writeReencodedComparisonFile samples = do
-      writeFile faultyReencodedFilePath (encode samples)
-      putStrLn $
-        "\n"
-          ++ "INFO: Written the reencoded goldenFile into "
-          ++ faultyReencodedFilePath 
-          ++ "."
+compareWithGolden _settings _typeNameInfo _Proxy goldenFile _comparisonFile = do
+  bytes <- readFile goldenFile
+  case decodeLazy bytes of
+    Right (randomSamples :: RandomSamples a) ->
+      encodeLazy randomSamples `shouldBe` bytes
+    Left err -> expectationFailure err
 
 -- | The golden files do not exist. Create it.
 createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy (s a) -> FilePath -> IO ()
@@ -172,7 +135,9 @@ createGoldenfile Settings {..} Proxy goldenFile = do
       ++ "  Created "
       ++ goldenFile
       ++ " containing random samples,\n"
-      ++ "  will compare " ++ fileType ++ " encodings with this from now on.\n"
+      ++ "  will compare "
+      ++ fileType
+      ++ " encodings with this from now on.\n"
       ++ "  Please, consider putting "
       ++ goldenFile
       ++ " under version control."
@@ -185,24 +150,6 @@ mkGoldenFile Settings {..} (TypeNameInfo {typeNameTopDir, typeNameModuleName, ty
   case typeNameModuleName of
     Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> fileType
     Just moduleName -> unTopDir typeNameTopDir </> unModuleName moduleName </> unTypeName typeNameTypeName <.> fileType
-
--- | Create the file path to save results from a failed golden test. Optionally
--- use the module name to help avoid name collisions.  Different modules can
--- have types of the same name.
-mkFaultyFile :: Settings -> TypeNameInfo a -> FilePath
-mkFaultyFile Settings {..} (TypeNameInfo {typeNameTypeName, typeNameModuleName, typeNameTopDir}) =
-  case unModuleName <$> typeNameModuleName of
-    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "faulty" <.> fileType
-    Just moduleName -> unTopDir typeNameTopDir </> moduleName </> unTypeName typeNameTypeName <.> "faulty" <.> fileType
-
--- | Create the file path to save results from a failed fallback golden test. Optionally
--- use the module name to help avoid name collisions.  Different modules can
--- have types of the same name.
-mkFaultyReencodedFile :: Settings -> TypeNameInfo a -> FilePath
-mkFaultyReencodedFile Settings {..} (TypeNameInfo {typeNameTypeName, typeNameModuleName, typeNameTopDir}) =
-  case unModuleName <$> typeNameModuleName of
-    Nothing -> unTopDir typeNameTopDir </> unTypeName typeNameTypeName <.> "faulty" <.> "reencoded" <.> fileType
-    Just moduleName -> unTopDir typeNameTopDir </> moduleName </> unTypeName typeNameTypeName <.> "faulty" <.> "reencoded" <.> fileType
 
 -- | Create a number of arbitrary instances of a type
 -- a sample size and a random seed.
