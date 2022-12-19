@@ -119,7 +119,7 @@ compareWithGolden _settings _typeNameInfo _Proxy goldenFile _comparisonFile = do
   case decodeLazy bytes of
     Right (randomSamples :: RandomSamples a) ->
       encodeLazy randomSamples `shouldBe` bytes
-    Left err -> expectationFailure err
+    Left decodingError -> expectationFailure $ "Failed to decode the encoded values of the golden file: " ++ decodingError
 
 -- | The golden files do not exist. Create it.
 createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy (s a) -> FilePath -> IO ()
