@@ -8,7 +8,7 @@ import qualified Data.ByteString as BS
 import Data.Proxy
 import System.Directory
 import Test.Cereal.GenericSpecs
-import Test.Cereal.Internal.Utils (RandomMismatchOption (..), RandomSamples(..), createMissingGoldenEnv, recreateBrokenGoldenEnv)
+import Test.Cereal.Internal.Utils (RandomSamples(..), createMissingGoldenEnv, recreateBrokenGoldenEnv)
 import Test.Hspec
 -- various iterations of a Product and Sum Type and their serializations
 import qualified Test.Types as T
@@ -188,20 +188,6 @@ spec = before unsetAllEnv $ do
 
       shouldProduceFailures 0 $ goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
 
-    it "different random seed but byte-for-byte identical should fail (with custom setting)" $ do
-      -- clean up previously existing golden folder
-      bg <- doesDirectoryExist "golden"
-      if bg
-        then removeDirectoryRecursive "golden"
-        else return ()
-
-      -- directly create golden file for tests
-      createDirectoryIfMissing True "golden/Person"
-      BS.writeFile "golden/Person/Person.bin" goldenByteIdentical
-
-      let customSettings = defaultSettings {randomMismatchOption = RandomMismatchError}
-      shouldProduceFailures 1 $ goldenADTSpecs customSettings (Proxy :: Proxy T.Person)
-
   describe "mkGoldenFileForType" $ do
     it "create a single file in a dir for a Product type" $ do
       -- clean up previously existing golden folder
@@ -224,61 +210,6 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/SumType/SumType1.bin" `shouldReturn` True
       doesFileExist "golden/SumType/SumType2.bin" `shouldReturn` True
       doesFileExist "golden/SumType/SumType3.bin" `shouldReturn` True
-
-  describe "roundtripFromFile" $ do
-    it "create golden test files" $ do
-      setCreateMissingGoldenEnv
-      -- clean up previously existing golden folder
-      bg <- doesDirectoryExist "golden"
-      if bg
-        then removeDirectoryRecursive "golden"
-        else return ()
-
-      -- files for Person and SumType do not exist
-      -- create them by running goldenADTSpecs
-      _ <- hspecSilently $ roundtripFromFile (Proxy :: Proxy T.Person)
-
-      doesFileExist "golden/Person.bin" `shouldReturn` True
-
-    it "Should pass if serialization is OK" $ do
-      shouldProduceFailures 0 $ roundtripFromFile (Proxy :: Proxy T.Person)
-
-    it "roundtripFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ roundtripFromFile (Proxy :: Proxy TBS.Person)
-
-    it "roundtripFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ roundtripFromFile (Proxy :: Proxy TNS.Person)
-
-    it "roundtripFromFile for types which have altered the name of the selector and using generic implementation of get and put should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ roundtripFromFile (Proxy :: Proxy TAS.Person)
-
-  describe "roundtripADTFromFile" $ do
-    it "create golden test files" $ do
-      setCreateMissingGoldenEnv
-      -- clean up previously existing golden folder
-      bg <- doesDirectoryExist "golden"
-      if bg
-        then removeDirectoryRecursive "golden"
-        else return ()
-
-      -- files for Person and SumType do not exist
-      -- create them by running goldenADTSpecs
-      _ <- hspecSilently $ roundtripADTFromFile (Proxy :: Proxy T.Person)
-
-      doesFileExist "golden/Person/Person.bin" `shouldReturn` True
-
-    it "Should pass if serialization is OK" $ do
-      shouldProduceFailures 0 $ roundtripADTFromFile (Proxy :: Proxy T.Person)
-
-    it "roundtripADTFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ roundtripADTFromFile (Proxy :: Proxy TBS.Person)
-
-    it "roundtripADTFromFile for types which have changed the values of get or put keys should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ roundtripADTFromFile (Proxy :: Proxy TNS.Person)
-
-    it "roundtripADTFromFile for types which have altered the name of the selector and using generic implementation of get and put should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ roundtripADTFromFile (Proxy :: Proxy TAS.Person)
-
 
 main :: IO ()
 main = 

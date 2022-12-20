@@ -8,7 +8,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-
 -- |
 -- Module      : Test.Cereal.GenericSpecs
 -- Description : Export all necessary functions
@@ -22,36 +21,32 @@
 -- - Test that the Data.Serialize instance is isomorphic.
 -- - Alert you when unexpected changes in Cereal serialization occur.
 -- - Record binary formatting of Haskell types.
-module Test.Cereal.GenericSpecs 
-  (
-    -- * Arbitrary testing
-    goldenSpecs
-  , roundtripSpecs
-  , roundtripAndGoldenSpecs
-  , roundtripFromFile
-  , roundtripFromFileWithSettings
+module Test.Cereal.GenericSpecs
+  ( -- * Arbitrary testing
+    goldenSpecs,
+    roundtripSpecs,
+    roundtripAndGoldenSpecs,
 
-  -- * ToADTArbitrary testing
-  , goldenADTSpecs
-  , roundtripADTSpecs
-  , roundtripAndGoldenSpecsWithSettings
-  , roundtripAndGoldenADTSpecs
-  , roundtripAndGoldenADTSpecsWithSettings
-  , roundtripADTFromFile
-  , roundtripADTFromFileWithSettings
+    -- * ToADTArbitrary testing
+    goldenADTSpecs,
+    roundtripADTSpecs,
+    roundtripAndGoldenSpecsWithSettings,
+    roundtripAndGoldenADTSpecs,
+    roundtripAndGoldenADTSpecsWithSettings,
 
-  -- * Make Files
-  , mkGoldenFileForType
+    -- * Make Files
+    mkGoldenFileForType,
 
-  -- * Util
-  , shouldBeIdentity
-  , GoldenDirectoryOption(..)
-  , Settings(..)
-  , defaultSettings
+    -- * Util
+    shouldBeIdentity,
+    GoldenDirectoryOption (..),
+    Settings (..),
+    defaultSettings,
 
-  -- * re-exports
-  , Proxy(..)
-  ) where
+    -- * re-exports
+    Proxy (..),
+  )
+where
 
 import Data.Proxy
 import qualified Data.Serialize as Cereal
@@ -64,10 +59,8 @@ import Test.Cereal.Internal.Utils
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
-import qualified Test.Cereal.Internal.RoundtripFromFile
-import qualified Test.Cereal.Internal.ADT.RoundtripFromFile
 
-roundtripSpecs :: forall a . (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
+roundtripSpecs :: forall a. (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
 roundtripSpecs Proxy = Roundtrip.roundtripSpecs (Proxy :: Proxy (GoldenCereal a))
 
 -- | Tests to ensure that the binary encoding has not unintentionally changed. This
@@ -83,7 +76,7 @@ roundtripSpecs Proxy = Roundtrip.roundtripSpecs (Proxy :: Proxy (GoldenCereal a)
 -- compare with golden file if it exists. Golden file encodes the serialized format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
-goldenSpecs :: 
+goldenSpecs ::
   forall a.
   (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) =>
   Settings ->
@@ -94,14 +87,14 @@ goldenSpecs settings Proxy = Golden.goldenSpecs settings (Proxy :: Proxy (Golden
 -- | run roundtrip and golden test for a type.
 -- sampleSize is used only when creating the golden file. When it is
 -- compared, the sampleSize is derived from the file.
-roundtripAndGoldenSpecs :: (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) => Proxy a -> Spec
+roundtripAndGoldenSpecs :: (Arbitrary a, Cereal.Serialize a, Eq a, Typeable a, Show a) => Proxy a -> Spec
 roundtripAndGoldenSpecs proxy =
   roundtripAndGoldenSpecsWithSettings defaultSettings proxy
 
 -- | 'roundtripAndGoldenSpecs' with custom settings.
 roundtripAndGoldenSpecsWithSettings ::
   forall a.
-  (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) =>
+  (Arbitrary a, Cereal.Serialize a, Eq a, Typeable a, Show a) =>
   Settings ->
   Proxy a ->
   Spec
@@ -143,27 +136,5 @@ instance GoldenSerializer GoldenCereal where
 instance Arbitrary a => Arbitrary (GoldenCereal a) where
   arbitrary = GoldenCereal <$> arbitrary
 
-
 defaultSettings :: Settings
 defaultSettings = genericDefaultSettings "bin"
-
-
-roundtripFromFile :: forall a. 
-  (Arbitrary a, Typeable a, Eq a, Show a, Cereal.Serialize a)
-  => Proxy a -> Spec
-roundtripFromFile = roundtripFromFileWithSettings defaultSettings
-
-roundtripFromFileWithSettings :: forall a. 
-  (Arbitrary a, Typeable a, Eq a, Show a, Cereal.Serialize a)
-  => Settings -> Proxy a -> Spec
-roundtripFromFileWithSettings = Test.Cereal.Internal.RoundtripFromFile.roundtripFromFile
-
-roundtripADTFromFile :: forall a. 
-  (ToADTArbitrary a, Typeable a, Eq a, Show a, Cereal.Serialize a)
-  => Proxy a -> Spec
-roundtripADTFromFile = roundtripADTFromFileWithSettings defaultSettings
-
-roundtripADTFromFileWithSettings :: forall a. 
-  (ToADTArbitrary a, Typeable a, Eq a, Show a, Cereal.Serialize a)
-  => Settings -> Proxy a -> Spec
-roundtripADTFromFileWithSettings = Test.Cereal.Internal.ADT.RoundtripFromFile.roundtripADTFromFile
