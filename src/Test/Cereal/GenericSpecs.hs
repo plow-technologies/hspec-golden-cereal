@@ -78,7 +78,7 @@ roundtripSpecs Proxy = Roundtrip.roundtripSpecs (Proxy :: Proxy (GoldenCereal a)
 -- to help monitor changes.
 goldenSpecs ::
   forall a.
-  (Arbitrary a, Cereal.Serialize a, Typeable a, Show a) =>
+  (Arbitrary a, Cereal.Serialize a, Typeable a, Show a, Eq a) =>
   Settings ->
   Proxy a ->
   Spec
