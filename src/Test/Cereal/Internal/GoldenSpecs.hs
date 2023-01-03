@@ -24,7 +24,7 @@ import Data.ByteString.Lazy hiding (putStrLn)
 import Data.Int (Int32)
 import Data.Maybe (isJust)
 import Data.Proxy
-import Data.Serialize (Serialize, decodeLazy, encodeLazy)
+import qualified Data.Serialize as Cereal (Serialize, decodeLazy, encodeLazy)
 import Data.Typeable
 import System.Directory
 import System.Environment (lookupEnv)
@@ -49,9 +49,12 @@ import Prelude hiding (readFile, writeFile)
 -- compare with golden file if it exists. Golden file encodes the serialized format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
+-- COMPATIBILITY_CHECK mode: 
+--  By using this mode checks with golden files are in terms of type compatibility instead of byte for byte.
+--  This is useful for checking forward or backward compatibility of types that evolves in time.
 goldenSpecs ::
   forall s a.
-  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Serialize a) =>
+  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Cereal.Serialize a) =>
   Settings ->
   Proxy (s a) ->
   Spec
@@ -62,7 +65,7 @@ goldenSpecs settings proxy =
 -- 'describe' function.
 goldenSpecsWithNote ::
   forall s a.
-  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Serialize a) =>
+  (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Cereal.Serialize a) =>
   Settings ->
   Proxy (s a) ->
   Maybe String ->
@@ -74,7 +77,7 @@ goldenSpecsWithNote settings proxy mNote = do
 -- | same as 'goldenSpecsWithNote' but does not require a Typeable, Eq or Show instance.
 goldenSpecsWithNotePlain ::
   forall s a.
-  (GoldenSerializerConstraints s a, Arbitrary a, Serialize a) =>
+  (GoldenSerializerConstraints s a, Arbitrary a, Cereal.Serialize a) =>
   Settings ->
   TypeNameInfo a ->
   Proxy (s a) ->
@@ -92,22 +95,27 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
               then createGoldenfile @s settings proxy goldenFile
               else throwIO err
       if exists
-        then
-          compareWithGolden @s settings typeNameInfo proxy goldenFile comparisonFile
-            `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
-                        Handler (\(err :: DecodeError) -> fixIfFlag err)
-                      ]
+        then do
+          doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
+          if doCompatibility
+            then compareCompatibilityWithGolden @s settings proxy goldenFile comparisonFile
+            else
+              compareWithGolden @s settings typeNameInfo proxy goldenFile comparisonFile
+                `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
+                            Handler (\(err :: DecodeError) -> fixIfFlag err)
+                          ]
         else do
           doCreate <- isJust <$> lookupEnv createMissingGoldenEnv
           if doCreate
             then createGoldenfile @s settings proxy goldenFile
             else expectationFailure $ "Missing golden file: " <> goldenFile
 
--- | The golden files already exist. Serialize values with the same seed from
--- the golden file and compare the with the data in the golden file.
+-- | PRE-condition: Golden file already exist.
+--   Try to decode golden file and encode it with the current encoder,
+--   then compare both encoded representations (byte for byte check).
 compareWithGolden ::
   forall s a.
-  (GoldenSerializerConstraints s a, Arbitrary a, Serialize a) =>
+  (GoldenSerializerConstraints s a, Arbitrary a, Cereal.Serialize a) =>
   Settings ->
   TypeNameInfo a ->
   Proxy (s a) ->
@@ -116,10 +124,32 @@ compareWithGolden ::
   IO ()
 compareWithGolden _settings _typeNameInfo _Proxy goldenFile _comparisonFile = do
   bytes <- readFile goldenFile
-  case decodeLazy bytes of
+  case Cereal.decodeLazy bytes of
     Right (randomSamples :: RandomSamples a) ->
-      encodeLazy randomSamples `shouldBe` bytes
+      Cereal.encodeLazy randomSamples `shouldBe` bytes
     Left decodingError -> expectationFailure $ "Failed to decode the encoded values of the golden file: " ++ decodingError
+
+-- | PRE-condition: Golden file already exist.
+--   Try to decode the golden file, then re-encode and re-decode it again,
+--   finally compare initially decoded values with latest decoded ones (at type compatibility level)
+compareCompatibilityWithGolden ::
+  forall s a.
+  (GoldenSerializerConstraints s a, Arbitrary a, Eq a, Cereal.Serialize a) =>
+  Settings ->
+  Proxy (s a) ->
+  FilePath ->
+  ComparisonFile ->
+  IO ()
+compareCompatibilityWithGolden _settings _Proxy goldenFile _comparisonFile = do
+  goldenBytes <- readFile goldenFile
+  case Cereal.decodeLazy goldenBytes of
+    Left decodingError -> expectationFailure $ "Failed to decode the encoded values of the golden file: " ++ decodingError
+    Right (randomSamples :: RandomSamples a) -> do
+      let reEncodedGoldenBytes = Cereal.encodeLazy randomSamples 
+      case Cereal.decodeLazy reEncodedGoldenBytes of
+        Left decodingError -> expectationFailure $ "Failed to re-decode the re-encoded values of the golden file: " ++ decodingError
+        Right reDecodedRandomSamples ->
+         randomSamples `shouldBe` reDecodedRandomSamples
 
 -- | The golden files do not exist. Create it.
 createGoldenfile :: forall s a. (Ctx s (RandomSamples a), GoldenSerializer s, Arbitrary a) => Settings -> Proxy (s a) -> FilePath -> IO ()

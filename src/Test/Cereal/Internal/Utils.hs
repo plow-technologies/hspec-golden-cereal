@@ -62,7 +62,7 @@ data Settings = Settings
     fileType :: String
   }
 
-type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a))
+type GoldenSerializerConstraints s a = (GoldenSerializer s, Ctx s (RandomSamples a), Show a, Eq a)
 
 class GoldenSerializer s where
   type Ctx s :: * -> Constraint
@@ -189,3 +189,7 @@ createMissingGoldenEnv = "CREATE_MISSING_GOLDEN"
 
 recreateBrokenGoldenEnv :: String
 recreateBrokenGoldenEnv = "RECREATE_BROKEN_GOLDEN"
+
+-- | env variable that is used in CI, indicates whether we golden test byte for byte
+compatibilityCheckEnv :: String 
+compatibilityCheckEnv = "COMPATIBILITY_CHECK"

@@ -8,12 +8,17 @@ import qualified Data.ByteString as BS
 import Data.Proxy
 import System.Directory
 import Test.Cereal.GenericSpecs
-import Test.Cereal.Internal.Utils (RandomSamples(..), createMissingGoldenEnv, recreateBrokenGoldenEnv)
+import Test.Cereal.Internal.Utils 
+  ( RandomSamples(..), 
+    createMissingGoldenEnv,
+    compatibilityCheckEnv,
+    recreateBrokenGoldenEnv
+  )
 import Test.Hspec
 -- various iterations of a Product and Sum Type and their serializations
 import qualified Test.Types as T
 import qualified Test.Types.AlteredSelector as TAS
-import qualified Test.Types.BrokenSerialization as TBS
+import qualified Test.Types.BackwardCompatible as TBC
 import qualified Test.Types.MismatchedToAndFromSerialization as MTFS
 import qualified Test.Types.NewSelector as TNS
 import Test.Utils
@@ -22,10 +27,15 @@ unsetAllEnv :: IO ()
 unsetAllEnv = do
   unsetEnv createMissingGoldenEnv
   unsetEnv recreateBrokenGoldenEnv
+  unsetEnv compatibilityCheckEnv
 
 setCreateMissingGoldenEnv :: IO ()
 setCreateMissingGoldenEnv = 
   setEnv createMissingGoldenEnv "1"
+
+setCompatibilityCheckEnv :: IO ()
+setCompatibilityCheckEnv = 
+  setEnv compatibilityCheckEnv "1"
 
 spec :: Spec
 spec = before unsetAllEnv $ do
@@ -86,26 +96,45 @@ spec = before unsetAllEnv $ do
         else return ()
 
       -- files for Person and SumType do not exist
-      -- create them by running goldenADTSpecs
+      -- create them by running goldenSpecs
       _ <- hspecSilently $ goldenSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy T.Person)
       _ <- hspecSilently $ goldenSpecs (defaultSettings {goldenDirectoryOption = CustomDirectoryName topDir}) (Proxy :: Proxy T.SumType)
 
       doesFileExist "bin-tests/Person.bin" `shouldReturn` True
       doesFileExist "bin-tests/SumType.bin" `shouldReturn` True
 
-    it "goldenADTSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
+    it "goldenSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
       setCreateMissingGoldenEnv
       shouldProduceFailures 0 $ do
         goldenSpecs defaultSettings (Proxy :: Proxy T.Person)
         goldenSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
-    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $goldenSpecs defaultSettings (Proxy :: Proxy TBS.Person)
+    it "goldenSpecs for types which encoding is backward compatible should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $goldenSpecs defaultSettings (Proxy :: Proxy TBC.Person)
 
-    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
+    it "goldenSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
       shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TNS.Person)
 
-    it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
+    it "goldenSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TAS.Person)
+
+    it "goldenSpecs (with compatibility check mode on) should pass for existing golden files in which model types and serialization have not changed" $ do
+      setCompatibilityCheckEnv
+      setCreateMissingGoldenEnv
+      shouldProduceFailures 0 $ do
+        goldenSpecs defaultSettings (Proxy :: Proxy T.Person)
+        goldenSpecs defaultSettings (Proxy :: Proxy T.SumType)
+
+    it "goldenSpecs (with compatibility check mode on) for types which encoding is backward compatible should succeed compatibility check" $ do
+      setCompatibilityCheckEnv
+      shouldProduceFailures 0 $ goldenSpecs defaultSettings (Proxy :: Proxy TBC.Person)
+
+    it "goldenSpecs (with compatibility check mode on) for types which have new selector and using generic implementation of put or get keys should fail to match compatibility with goldenFiles" $ do
+      setCompatibilityCheckEnv
+      shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TNS.Person)
+
+    it "goldenSpecs (with compatibility check mode on) for types which have altered the name of the selector and using generic implementation of put and get should fail to match compatibility with goldenFiles" $ do
+      setCompatibilityCheckEnv
       shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TAS.Person)
 
   describe "Test.Cereal.GenericSpecs: goldenADTSpecs" $ do
@@ -164,8 +193,8 @@ spec = before unsetAllEnv $ do
         goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
         goldenADTSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
-    it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
-      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TBS.Person)
+    it "goldenADTSpecs for types which encoding is backward compatible should fail to match the goldenFiles" $ do
+      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TBC.Person)
 
     it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
       shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TNS.Person)
@@ -173,6 +202,25 @@ spec = before unsetAllEnv $ do
     it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
       shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TAS.Person)
 
+    it "goldenADTSpecs (with compatibility check mode on) should pass for existing golden files in which model types and serialization have not changed" $ do
+      setCompatibilityCheckEnv
+      setCreateMissingGoldenEnv
+      shouldProduceFailures 0 $ do
+        goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
+        goldenADTSpecs defaultSettings (Proxy :: Proxy T.SumType)
+
+    it "goldenADTSpecs (with compatibility check mode on) for types which encoding is backward compatible should succeed compatibility check" $ do
+      setCompatibilityCheckEnv
+      shouldProduceFailures 0 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TBC.Person)
+
+    it "goldenADTSpecs (with compatibility check mode on) for types which have new selector and using generic implementation of put or get keys should fail to match compatibility with goldenFiles" $ do
+      setCompatibilityCheckEnv
+      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TNS.Person)
+
+    it "goldenADTSpecs (with compatibility check mode on) for types which have altered the name of the selector and using generic implementation of put and get should fail to match compatibility with goldenFiles" $ do
+      setCompatibilityCheckEnv
+      shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TAS.Person)
+  
     let goldenByteIdentical = encode $ RandomSamples 41 [T.Person "abc" 1, T.Person "def" 2]
 
     it "different random seed but byte-for-byte identical should pass (default setting)" $ do

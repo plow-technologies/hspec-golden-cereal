@@ -1,43 +1,34 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module Test.Types where
+module Test.Types.BackwardCompatible where
 
 import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
+import qualified Test.Types as V0 (Person (Person))
 
 data Person = Person
-  { name :: String,
-    age :: Int
+  { name :: String
   }
   deriving (Eq, Show, Generic)
 
 instance Serialize Person where
   put x = do
-    putWord16le 0
+    putWord16le 1
     put $ name x
-    put $ age x
   get = do
     v <- getWord16le
     case v of
-      0 -> Person <$> get <*> get
+      0 -> fmap fromOldFormat (V0.Person <$> get <*> get)
+      1 -> Person <$> get
       _ -> fail $ "Unknown version: " ++ show v
+    where
+       fromOldFormat :: V0.Person -> Person
+       fromOldFormat (V0.Person n _) = Person n
 
 instance ToADTArbitrary Person
 
 instance Arbitrary Person where
-  arbitrary = genericArbitrary
-
-data SumType
-  = SumType1 Int
-  | SumType2 String Int
-  | SumType3 Double String Int
-  deriving (Eq, Show, Generic)
-
-instance Serialize SumType
-
-instance ToADTArbitrary SumType
-
-instance Arbitrary SumType where
   arbitrary = genericArbitrary
