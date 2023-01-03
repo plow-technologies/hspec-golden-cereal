@@ -49,6 +49,9 @@ import Prelude hiding (readFile, writeFile)
 -- compare with golden file if it exists. Golden file encodes the serialized format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
+-- COMPATIBILITY_CHECK mode: 
+--  By using this mode checks with golden files are in terms of type compatibility instead of byte for byte.
+--  This is useful for checking forward or backward compatibility of types that evolves in time.
 goldenSpecs ::
   forall s a.
   (GoldenSerializerConstraints s a, Typeable a, Arbitrary a, Serialize a) =>
@@ -107,8 +110,9 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
             then createGoldenfile @s settings proxy goldenFile
             else expectationFailure $ "Missing golden file: " <> goldenFile
 
--- | The golden files already exist. Serialize values with the same seed from
--- the golden file and compare the with the data in the golden file (byte for byte check).
+-- | PRE-condition: Golden file already exist.
+--   Try to decode golden file and encode it with the current encoder,
+--   then compare both encoded representations (byte for byte check).
 compareWithGolden ::
   forall s a.
   (GoldenSerializerConstraints s a, Arbitrary a, Serialize a) =>
@@ -125,9 +129,9 @@ compareWithGolden _settings _typeNameInfo _Proxy goldenFile _comparisonFile = do
       encodeLazy randomSamples `shouldBe` bytes
     Left decodingError -> expectationFailure $ "Failed to decode the encoded values of the golden file: " ++ decodingError
 
-
--- | The golden files already exist. Cereal values with the same seed from
--- the golden file and compare the with the data in the golden file (at type compatibility level)
+-- | PRE-condition: Golden file already exist.
+--   Try to decode the golden file, then re-encode and re-decode it again,
+--   finally compare initially decoded values with latest decoded ones (at type compatibility level)
 compareCompatibilityWithGolden ::
   forall s a.
   (GoldenSerializerConstraints s a, Arbitrary a, Eq a, Serialize a) =>

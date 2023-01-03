@@ -48,6 +48,9 @@ import Prelude hiding (readFile, writeFile)
 -- compare with golden file if it exists. Golden file encodes binary format of a
 -- type. It is recommended that you put the golden files under revision control
 -- to help monitor changes.
+-- COMPATIBILITY_CHECK mode: 
+--  By using this mode checks with golden files are in terms of type compatibility instead of byte for byte.
+--  This is useful for checking forward or backward compatibility of types that evolves in time.
 goldenADTSpecs ::
   forall a.
   (ToADTArbitrary a, Eq a, Show a, Serialize a) =>
@@ -93,11 +96,15 @@ testConstructor Settings {..} moduleName typeName cap =
             then createGoldenFile sampleSize cap goldenFile
             else throwIO err
     if exists
-      then
-        compareWithGolden topDir mModuleName typeName cap goldenFile
-          `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
-                      Handler (\(err :: DecodeError) -> fixIfFlag err)
-                    ]
+      then do
+        doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
+        if doCompatibility
+          then compareCompatibilityWithGolden topDir mModuleName typeName cap goldenFile
+          else
+            compareWithGolden topDir mModuleName typeName cap goldenFile
+              `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
+                          Handler (\(err :: DecodeError) -> fixIfFlag err)
+                        ]
       else do
         doCreate <- isJust <$> lookupEnv createMissingGoldenEnv
         if doCreate
@@ -114,8 +121,8 @@ testConstructor Settings {..} moduleName typeName cap =
         else Nothing
 
 -- | PRE-condition: Golden file already exist.
---   Try to decode golden file and encode it (without including the seed) with the current encoder.
---   then compare both encoded representations.
+--   Try to decode golden file and encode it with the current encoder,
+--   then compare both encoded representations (byte for byte check).
 compareWithGolden ::
   forall a.
   (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
@@ -131,6 +138,29 @@ compareWithGolden _topDir _mModuleName _typeName _cap goldenFile = do
     Right (randomSamples :: RandomSamples a) ->
       encodeLazy randomSamples `shouldBe` bytes
     Left err -> expectationFailure err
+
+-- | PRE-condition: Golden file already exist.
+--   Try to decode the golden file, then re-encode and re-decode it again,
+--   finally compare initially decoded values with latest decoded ones (at type compatibility level)
+compareCompatibilityWithGolden ::
+  forall a.
+  (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
+  String ->
+  Maybe String ->
+  String ->
+  ConstructorArbitraryPair a ->
+  FilePath ->
+  IO ()
+compareCompatibilityWithGolden _topDir _mModuleName _typeName _cap goldenFile = do
+  goldenBytes <- LBS.readFile goldenFile
+  case decodeLazy goldenBytes of
+    Left decodingError -> expectationFailure $ "Failed to decode the encoded values of the golden file: " ++ decodingError
+    Right (randomSamples :: RandomSamples a) -> do
+      let reEncodedGoldenBytes = encodeLazy randomSamples 
+      case decodeLazy reEncodedGoldenBytes of
+        Left decodingError -> expectationFailure $ "Failed to re-decode the re-encoded values of the golden file: " ++ decodingError
+        Right reDecodedRandomSamples ->
+         randomSamples `shouldBe` reDecodedRandomSamples
 
 -- | The golden files do not exist. Create them for each constructor.
 createGoldenFile ::
