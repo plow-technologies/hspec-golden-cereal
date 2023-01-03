@@ -13,7 +13,16 @@ data Person = Person
   }
   deriving (Eq, Show, Generic)
 
-instance Serialize Person
+instance Serialize Person where
+  put x = do
+    putWord16le 0
+    put $ name x
+    put $ age x
+  get = do
+    v <- getWord16le
+    case v of
+      0 -> Person <$> get <*> get
+      _ -> fail $ "Unknown version: " ++ show v
 
 instance ToADTArbitrary Person
 

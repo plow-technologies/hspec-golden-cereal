@@ -7,26 +7,26 @@ import Data.Serialize
 import GHC.Generics
 import Test.QuickCheck
 import Test.QuickCheck.Arbitrary.ADT
+import qualified Test.Types as V0 (Person (Person))
 
 data Person = Person
-  { name :: String,
-    age :: Int
+  { name :: String
   }
   deriving (Eq, Show, Generic)
-
-data PersonWithoutAge = PersonWithoutAge
-  {
-    nameWithoutAge :: String
-  }
-  deriving (Eq, Show, Generic)
-
-instance Serialize PersonWithoutAge
 
 instance Serialize Person where
-  put = \(Person newName _) -> put (PersonWithoutAge newName)
+  put x = do
+    putWord16le 1
+    put $ name x
   get = do
-    PersonWithoutAge n <- get
-    return $ Person n 0 
+    v <- getWord16le
+    case v of
+      0 -> fmap fromOldFormat (V0.Person <$> get <*> get)
+      1 -> Person <$> get
+      _ -> fail $ "Unknown version: " ++ show v
+    where
+       fromOldFormat :: V0.Person -> Person
+       fromOldFormat (V0.Person n _) = Person n
 
 instance ToADTArbitrary Person
 
