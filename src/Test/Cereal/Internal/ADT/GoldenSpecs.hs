@@ -125,7 +125,7 @@ testConstructor Settings {..} moduleName typeName cap =
 --   then compare both encoded representations (byte for byte check).
 compareWithGolden ::
   forall a.
-  (Show a, Eq a, Serialize a, ToADTArbitrary a) =>
+  (Eq a, Serialize a, ToADTArbitrary a) =>
   String ->
   Maybe String ->
   String ->

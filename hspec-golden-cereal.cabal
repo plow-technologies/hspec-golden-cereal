@@ -59,7 +59,7 @@ test-suite test
       Test.Cereal.GenericSpecsSpec
       Test.Types
       Test.Types.AlteredSelector
-      Test.Types.BrokenSerialization
+      Test.Types.BackwardCompatible
       Test.Types.MismatchedToAndFromSerialization
       Test.Types.NewSelector
       Test.Utils

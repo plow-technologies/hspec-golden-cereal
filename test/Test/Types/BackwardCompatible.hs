@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Test.Types.BrokenSerialization where
+module Test.Types.BackwardCompatible where
 
 import Data.Serialize
 import GHC.Generics
@@ -28,24 +28,7 @@ instance Serialize Person where
     PersonWithoutAge n <- get
     return $ Person n 0 
 
-
 instance ToADTArbitrary Person
 
 instance Arbitrary Person where
   arbitrary = genericArbitrary
-
-data SumType
-  = SumType1 Int
-  | SumType2 String Int
-  | SumType3 Double String Int
-  deriving (Eq, Show, Generic)
-
-instance Serialize SumType
-
-instance ToADTArbitrary SumType
-
-instance Arbitrary SumType where
-  arbitrary = genericArbitrary
-
-data P2 = P2 String Int deriving (Eq, Show, Generic)
-instance Serialize P2
