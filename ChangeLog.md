@@ -1,5 +1,8 @@
 # Revision history for hspec-golden-cereal
 
+## 0.4.0.1  -- 2023-01-04
+* Logs about mode in use
+
 ## 0.4.0.0  -- 2023-01-03
 * Introduce COMPATIBILITY_CHECK mode
 

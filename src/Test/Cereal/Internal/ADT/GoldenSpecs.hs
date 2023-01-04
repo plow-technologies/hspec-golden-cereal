@@ -99,8 +99,11 @@ testConstructor Settings {..} moduleName typeName cap =
       then do
         doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
         if doCompatibility
-          then compareCompatibilityWithGolden topDir mModuleName typeName cap goldenFile
-          else
+          then do
+            putStrLn "running golden tests in compatibility mode"
+            compareCompatibilityWithGolden topDir mModuleName typeName cap goldenFile
+          else do
+            putStrLn "running golden tests using byte for byte check"
             compareWithGolden topDir mModuleName typeName cap goldenFile
               `catches` [ Handler (\(err :: HUnitFailure) -> fixIfFlag err),
                           Handler (\(err :: DecodeError) -> fixIfFlag err)
@@ -108,7 +111,9 @@ testConstructor Settings {..} moduleName typeName cap =
       else do
         doCreate <- isJust <$> lookupEnv createMissingGoldenEnv
         if doCreate
-          then createGoldenFile sampleSize cap goldenFile
+          then do
+            putStrLn "creating golden tests"
+            createGoldenFile sampleSize cap goldenFile
           else expectationFailure $ "Missing golden file: " <> goldenFile
   where
     goldenFile = mkGoldenFilePath topDir mModuleName typeName cap
