@@ -96,8 +96,10 @@ goldenSpecsWithNotePlain settings@Settings {..} typeNameInfo@(TypeNameInfo {type
               else throwIO err
       if exists
         then do
-          doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
-          if doCompatibility
+          -- doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
+          -- if doCompatibility
+          doByteForByte <- isJust <$> lookupEnv byteForByteCheckEnv
+          if not doByteForByte
             then do
               putStrLn "running golden tests in compatibility mode"
               compareCompatibilityWithGolden @s settings proxy goldenFile comparisonFile
