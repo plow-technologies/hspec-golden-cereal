@@ -1,5 +1,8 @@
 # Revision history for hspec-golden-cereal
 
+## 0.4.1.0  -- 2023-01-04
+* Compatibility mode as default (instead of Byte For Byte)
+
 ## 0.4.0.1  -- 2023-01-04
 * Logs about mode in use
 
