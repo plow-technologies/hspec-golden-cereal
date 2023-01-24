@@ -97,10 +97,8 @@ testConstructor Settings {..} moduleName typeName cap =
             else throwIO err
     if exists
       then do
-        -- doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
-        -- if doCompatibility
-        doByteForByte <- isJust <$> lookupEnv byteForByteCheckEnv
-        if not doByteForByte
+        doCompatibility <- isJust <$> lookupEnv compatibilityCheckEnv
+        if doCompatibility
           then do
             putStrLn "running golden tests in compatibility mode"
             compareCompatibilityWithGolden topDir mModuleName typeName cap goldenFile

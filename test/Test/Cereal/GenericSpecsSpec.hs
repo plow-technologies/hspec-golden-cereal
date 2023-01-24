@@ -12,7 +12,6 @@ import Test.Cereal.Internal.Utils
   ( RandomSamples(..), 
     createMissingGoldenEnv,
     compatibilityCheckEnv,
-    byteForByteCheckEnv, -- TODO: Remove me!
     recreateBrokenGoldenEnv
   )
 import Test.Hspec
@@ -29,7 +28,6 @@ unsetAllEnv = do
   unsetEnv createMissingGoldenEnv
   unsetEnv recreateBrokenGoldenEnv
   unsetEnv compatibilityCheckEnv
-  unsetEnv byteForByteCheckEnv -- TODO: Remove me!
 
 setCreateMissingGoldenEnv :: IO ()
 setCreateMissingGoldenEnv = 
@@ -39,34 +37,24 @@ setCompatibilityCheckEnv :: IO ()
 setCompatibilityCheckEnv = 
   setEnv compatibilityCheckEnv "1"
 
--- TODO: Remove me!
-setByteForByteCheckEnv :: IO ()
-setByteForByteCheckEnv = 
-  setEnv byteForByteCheckEnv "1"
-
 spec :: Spec
 spec = before unsetAllEnv $ do
   describe "Test.Cereal.GenericSpecs: roundtripSpecs" $ do
     it "should pass when put and get are defined appropriately" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 0 $ roundtripSpecs (Proxy :: Proxy T.Person)
 
     it "should fail when put and get definitions do not match" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ roundtripSpecs (Proxy :: Proxy MTFS.Person)
 
   describe "Test.Cereal.GenericSpecs: roundtripADTSpecs" $ do
     it "should pass when put and get are defined appropriately" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 0 $ roundtripADTSpecs (Proxy :: Proxy T.Person)
 
     it "should fail when put and get definitions do not match" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ roundtripADTSpecs (Proxy :: Proxy MTFS.Person)
 
   describe "Test.Cereal.GenericSpecs: goldenSpecs" $ do
     it "create golden test files" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
@@ -83,7 +71,6 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/SumType.bin" `shouldReturn` True
 
     it "create golden test files" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
@@ -100,7 +87,6 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/Test.Types/SumType.bin" `shouldReturn` True
 
     it "create golden test files in a user defined directory" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       let topDir = "bin-tests"
       -- clean up previously existing user defined folder
@@ -118,22 +104,18 @@ spec = before unsetAllEnv $ do
       doesFileExist "bin-tests/SumType.bin" `shouldReturn` True
 
     it "goldenSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       shouldProduceFailures 0 $ do
         goldenSpecs defaultSettings (Proxy :: Proxy T.Person)
         goldenSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
     it "goldenSpecs for types which encoding is backward compatible should fail to match the goldenFiles" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $goldenSpecs defaultSettings (Proxy :: Proxy TBC.Person)
 
     it "goldenSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TNS.Person)
 
     it "goldenSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ goldenSpecs defaultSettings (Proxy :: Proxy TAS.Person)
 
     it "goldenSpecs (with compatibility check mode on) should pass for existing golden files in which model types and serialization have not changed" $ do
@@ -157,7 +139,6 @@ spec = before unsetAllEnv $ do
 
   describe "Test.Cereal.GenericSpecs: goldenADTSpecs" $ do
     it "create golden test files" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
@@ -176,7 +157,6 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/SumType/SumType3.bin" `shouldReturn` True
 
     it "create golden test files in a sub directory using the module name" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       -- files for Person and SumType do not exist
       -- create them by running goldenADTSpecs
@@ -189,7 +169,6 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/Test.Types/SumType/SumType3.bin" `shouldReturn` True
 
     it "create golden test files in a user defined directory" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       let topDir = "bin-tests"
       -- clean up previously existing user defined folder
@@ -209,22 +188,18 @@ spec = before unsetAllEnv $ do
       doesFileExist "bin-tests/SumType/SumType3.bin" `shouldReturn` True
 
     it "goldenADTSpecs should pass for existing golden files in which model types and serialization have not changed" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       setCreateMissingGoldenEnv
       shouldProduceFailures 0 $ do
         goldenADTSpecs defaultSettings (Proxy :: Proxy T.Person)
         goldenADTSpecs defaultSettings (Proxy :: Proxy T.SumType)
 
     it "goldenADTSpecs for types which encoding is backward compatible should fail to match the goldenFiles" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TBC.Person)
 
     it "goldenADTSpecs for types which have changed the values of put or get keys should fail to match the goldenFiles" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TNS.Person)
 
     it "goldenADTSpecs for types which have altered the name of the selector and using generic implementation of put and get should fail to match the goldenFiles" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       shouldProduceFailures 1 $ goldenADTSpecs defaultSettings (Proxy :: Proxy TAS.Person)
 
     it "goldenADTSpecs (with compatibility check mode on) should pass for existing golden files in which model types and serialization have not changed" $ do
@@ -249,7 +224,6 @@ spec = before unsetAllEnv $ do
     let goldenByteIdentical = encode $ RandomSamples 41 [T.Person "abc" 1, T.Person "def" 2]
 
     it "different random seed but byte-for-byte identical should pass (default setting)" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
       if bg
@@ -264,7 +238,6 @@ spec = before unsetAllEnv $ do
 
   describe "mkGoldenFileForType" $ do
     it "create a single file in a dir for a Product type" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
       if bg
@@ -275,7 +248,6 @@ spec = before unsetAllEnv $ do
       doesFileExist "golden/Person/Person.bin" `shouldReturn` True
 
     it "create a file for each constructor in a dir for a Sum type" $ do
-      setByteForByteCheckEnv -- TODO: Remove me!
       -- clean up previously existing golden folder
       bg <- doesDirectoryExist "golden"
       if bg
